@@ -26,9 +26,10 @@ LOCAL_RUN = os.getenv('LOCALRUN', 'false').lower() == 'true'
 TESTS = os.getenv(
     'CASELIST',
     str([
-        7691, 7692, 7693, 7694, 7695,
-        7696, 7697, 7698, 7699, 7700,
-        7701, 7702, 100131, 100132
+        7691
+        # 7691, 7692, 7693, 7694, 7695,
+        # 7696, 7697, 7698, 7699, 7700,
+        # 7701, 7702, 100131, 100132
     ])
 )
 
@@ -43,57 +44,70 @@ class TestStudentsWorkAssignments(unittest.TestCase):
         self.desired_capabilities['name'] = self.id()
         if not LOCAL_RUN:
             self.teacher = Teacher(
-                username=os.getenv('TEACHER_USER_CC'),
-                password=os.getenv('TEACHER_PASSWORD'),
+                use_env_vars=True,
+                pasta_user=self.ps,
+                capabilities=self.desired_capabilities
+            )
+            self.student = Student(
+                use_env_vars=True,
+                existing_driver=self.teacher.driver,
                 pasta_user=self.ps,
                 capabilities=self.desired_capabilities
             )
         else:
             self.teacher = Teacher(
-                username=os.getenv('TEACHER_USER_CC'),
-                password=os.getenv('TEACHER_PASSWORD'),
+                use_env_vars=True,
             )
-        self.teacher.login()
-        if 'cc-dashboard' not in self.teacher.current_url():
-            courses = self.teacher.find_all(
-                By.CLASS_NAME,
-                'tutor-booksplash-course-item'
+            self.student = Student(
+                use_env_vars=True,
+                existing_driver=self.teacher.driver,
             )
-            assert(courses), 'No courses found.'
-            if not isinstance(courses, list):
-                courses = [courses]
-            course_id = randint(0, len(courses) - 1)
-            self.course = courses[course_id].get_attribute('data-title')
-            self.teacher.select_course(title=self.course)
-        self.teacher.goto_course_roster()
-        try:
-            section = self.teacher.find_all(
-                By.XPATH,
-                '//*[contains(@class,"nav-tabs")]//a'
+        self.student.login()
+        self.student.driver.find_element(
+            By.XPATH,
+            '//p[contains(text(),"OpenStax Concept Coach")]'
+        ).click()
+        self.student.wait.until(
+            expect.visibility_of_element_located(
+                (By.XPATH,
+                 '//a[@class="go-now"]')
             )
-            if isinstance(section, list):
-                section = '%s' % section[randint(0, len(section) - 1)].text
-            else:
-                section = '%s' % section.text
-        except Exception:
-            section = '%s' % randint(100, 999)
-            self.teacher.add_course_section(section)
-        self.code = self.teacher.get_enrollment_code(section)
-        print('Course Phrase: ' + self.code)
-        self.book_url = self.teacher.find(
-            By.XPATH, '//a[span[contains(text(),"Online Book")]]'
-        ).get_attribute('href')
-        self.teacher.find(By.CSS_SELECTOR, 'button.close').click()
-        self.teacher.sleep(0.5)
-        self.teacher.logout()
-        self.teacher.sleep(1)
-        self.student = Student(use_env_vars=True,
-                               existing_driver=self.teacher.driver)
-        self.first_name = Assignment.rword(6)
-        self.last_name = Assignment.rword(8)
-        self.email = self.first_name + '.' \
-            + self.last_name \
-            + '@tutor.openstax.org'
+        ).click()
+
+        # self.teacher.login()
+        # self.teacher.driver.find_element(
+        #     By.XPATH,
+        #     '//p[contains(text(),"OpenStax Concept Coach")]'
+        # ).click()
+        # self.teacher.goto_course_roster()
+        # try:
+        #     section = self.teacher.find_all(
+        #         By.XPATH,
+        #         '//*[contains(@class,"nav-tabs")]//a'
+        #     )
+        #     if isinstance(section, list):
+        #         section = '%s' % section[randint(0, len(section) - 1)].text
+        #     else:
+        #         section = '%s' % section.text
+        # except Exception:
+        #     section = '%s' % randint(100, 999)
+        #     self.teacher.add_course_section(section)
+        # self.code = self.teacher.get_enrollment_code(section)
+        # print('Course Phrase: ' + self.code)
+        # self.book_url = self.teacher.find(
+        #     By.XPATH, '//a[span[contains(text(),"Online Book")]]'
+        # ).get_attribute('href')
+        # self.teacher.find(By.CSS_SELECTOR, 'button.close').click()
+        # self.teacher.sleep(0.5)
+        # self.teacher.logout()
+        # self.teacher.sleep(1)
+        # self.student = Student(use_env_vars=True,
+        #                        existing_driver=self.teacher.driver)
+        # self.first_name = Assignment.rword(6)
+        # self.last_name = Assignment.rword(8)
+        # self.email = self.first_name + '.' \
+        #     + self.last_name \
+        #     + '@tutor.openstax.org'
 
     def tearDown(self):
         """Test destructor."""
@@ -110,7 +124,20 @@ class TestStudentsWorkAssignments(unittest.TestCase):
     # Case C7691 - 001 - Student | Selects an exercise answer
     @pytest.mark.skipif(str(7691) not in TESTS, reason='Excluded')
     def test_student_select_an_exercise_answer_7691(self):
-        """Select an exercise answer."""
+        """Select an exercise answer.
+
+        Steps:
+        Click the 'Contents' button to open the table of contents
+        Click on a chapter
+        Click on a non-introductory section
+        Click the 'Launch Concept Coach' button at the bottom of the page
+        Type text into the 'Enter your response' text box
+        Click the 'Answer' button
+        Click a multiple choice answer
+
+        Expected Result:
+        The 'Submit' button is now clickable.
+        """
         self.ps.test_updates['name'] = 'cc1.08.001' \
             + inspect.currentframe().f_code.co_name[4:]
         self.ps.test_updates['tags'] = [
@@ -122,93 +149,52 @@ class TestStudentsWorkAssignments(unittest.TestCase):
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.student.get(self.book_url)
-        self.student.sleep(2)
-        self.student.find_all(By.XPATH, '//a[@class="nav next"]')[0].click()
-        self.student.page.wait_for_page_load()
-        try:
-            widget = self.student.find(By.ID, 'coach-wrapper')
-        except:
-            self.student.find_all(By.XPATH,
-                                  '//a[@class="nav next"]')[0].click()
-            self.student.page.wait_for_page_load()
-            try:
-                self.student.sleep(1)
-                widget = self.student.find(By.ID, 'coach-wrapper')
-            except:
-                self.student.find_all(By.XPATH,
-                                      '//a[@class="nav next"]')[0].click()
-                self.student.page.wait_for_page_load()
-                self.student.sleep(1)
-                widget = self.student.find(By.ID, 'coach-wrapper')
-        Assignment.scroll_to(self.student.driver, widget)
-        self.student.find(
-            By.XPATH,
-            '//button[span[contains(text(),"Launch Concept Coach")]]'
-        ).click()
-        self.student.sleep(1.5)
-        base_window = self.student.driver.window_handles[0]
-        self.student.find(By.CSS_SELECTOR, 'div.sign-up').click()
-        self.student.sleep(3)
-        popup = self.student.driver.window_handles[1]
-        self.student.driver.switch_to_window(popup)
-        self.student.find(By.LINK_TEXT, 'Sign up').click()
-        self.student.find(By.ID, 'identity-login-button').click()
-        self.student.find(
-            By.ID,
-            'signup_first_name'
-        ).send_keys(self.first_name)
-        self.student.find(By.ID, 'signup_last_name').send_keys(self.last_name)
-        self.student.find(By.ID, 'signup_email_address').send_keys(self.email)
-        self.student.find(By.ID, 'signup_username').send_keys(self.last_name)
-        self.student.find(
-            By.ID,
-            'signup_password'
-        ).send_keys(self.student.password)
-        self.student.find(
-            By.ID,
-            'signup_password_confirmation'
-        ).send_keys(self.student.password)
-        self.student.find(By.ID, 'create_account_submit').click()
-        self.student.find(By.ID, 'i_agree').click()
-        self.student.find(By.ID, 'agreement_submit').click()
-        self.student.find(By.ID, 'i_agree').click()
-        self.student.find(By.ID, 'agreement_submit').click()
-        self.student.driver.switch_to_window(base_window)
-        self.student.find(
-            By.XPATH,
-            '//input[contains(@label,"Enter the enrollment code")]'
-        ).send_keys(self.code)
-        self.student.sleep(2)
-        self.student.find(By.CSS_SELECTOR, 'button.enroll').click()
-        self.student.sleep(2)
-        self.student.find(
-            By.CSS_SELECTOR,
-            'div.field input.form-control'
-        ).send_keys(self.last_name)
-        self.student.find(By.CSS_SELECTOR, 'button.async-button').click()
-        self.student.sleep(5)
-        try:
-            self.student.find(By.XPATH, '//button[text()="Continue"]').click()
-        except:
-            print('Two-step message not seen.')
-        self.student.wait.until(
-            expect.element_to_be_clickable(
-                (By.XPATH,
-                 '//div[@class="openstax-question"]//textarea')
-            )
-        ).send_keys(chomsky())
-        self.student.find(By.CSS_SELECTOR, 'button.async-button').click()
         self.student.wait.until(
             expect.visibility_of_element_located(
-                (By.XPATH, '//div[@class="answer-letter"]')
+                (By.XPATH,
+                 '//span[text()="Contents"]')
+            )
+        ).click()
+        self.student.wait.until(
+            expect.visibility_of_element_located(
+                (By.XPATH,
+                 '//span[@class="chapter-number" and text()="1.1"]')
+            )
+        ).click()
+        self.student.wait.until(
+            expect.visibility_of_element_located(
+                (By.XPATH,
+                 '//a[text()="Jump to Concept Coach"]')
+            )
+        ).click()
+        # self.student.driver.find_element(
+        #     By.XPATH, '//a[text()="Jump to Concept Coach"]'
+        # ).click()
+        self.student.sleep(0.5)
+        self.student.driver.find_element(
+            By.XPATH, '//button[text()="Launch Concept Coach"]'
+        ).click()
+        # click on an answer
+        self.student.wait.until(
+            expect.visibility_of_element_located(
+                (By.XPATH,
+                 '//div[@class="openstax-answer"]')
+            )
+        ).click()
+        self.student.wait.until(
+            expect.visibility_of_element_located(
+                (By.XPATH,
+                 '//button[text()="Submit"]')
+            )
+        ).click()
+        self.student.sleep(1)
+        # check that answer was selected
+        self.student.wait.until(
+            expect.visibility_of_element_located(
+                (By.XPATH,
+                 '//div[@class="has-correct-answer"]')
             )
         )
-        answers = self.student.find_all(By.CSS_SELECTOR, 'div.answer-letter')
-        answers[randint(0, len(answers) - 1)].click()
-        self.student.find(By.CSS_SELECTOR, 'button.async-button').click()
-        self.student.find(By.CSS_SELECTOR, 'button.async-button').click()
-
         self.ps.test_updates['passed'] = True
 
     # Case C7692 - 002 - Student | After answering an exercise feedback
