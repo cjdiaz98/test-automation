@@ -6,10 +6,11 @@ import json
 import os
 import pytest
 import unittest
+import datetime
 
 from pastasauce import PastaSauce, PastaDecorator
 from random import randint
-# from selenium.webdriver import ActionChains
+from selenium.webdriver import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as expect
 from staxing.assignment import Assignment
@@ -28,10 +29,10 @@ LOCAL_RUN = os.getenv('LOCALRUN', 'false').lower() == 'true'
 TESTS = os.getenv(
     'CASELIST',
     str([
-        8184, 8185, 8186, 8187, 8188,
-        8189, 8190, 8191, 8192, 8193,
-        8194, 8195, 8196, 8199, 8201,
-        8202, 8203, 8204, 8205, 8206
+        8184, 8185, 8188, 8189, 8190,
+        8191, 8192, 8193, 8194, 8195,
+        8196, 8199, 8201, 8202, 8203,
+        8204, 8205, 8206
     ])
 )
 
@@ -61,75 +62,37 @@ class TestWorkAReading(unittest.TestCase):
                 use_env_vars=True,
             )
             self.teacher = Teacher(
-                use_env_vars=True
+                use_env_vars=True,
+                existing_driver=self.student.driver,
             )
         self.teacher.login()
-
-        # Create a reading for the student to work
-        self.teacher.select_course(appearance='physics')
+        self.student.driver.find_element(
+            By.XPATH, "//div[@data-course-id='224']"
+        ).click()
+        # create a reading assignment for the student to work
+        self.assignment_name = "reading_t1_28_" + str(randint(0, 999))
+        today = datetime.date.today()
+        begin = (today + datetime.timedelta(days=0)).strftime('%m/%d/%Y')
+        end = (today + datetime.timedelta(days=6)).strftime('%m/%d/%Y')
+        self.teacher.add_assignment(assignment='reading',
+                                    args={
+                                        'title': self.assignment_name,
+                                        'description': 'description',
+                                        'periods':
+                                            {'all': ((begin, '12:01a'), end)},
+                                        'reading_list': ['1.1'],
+                                        'status': 'publish',
+                                    })
         self.teacher.wait.until(
             expect.visibility_of_element_located(
-                (By.ID, 'add-assignment')
+                (By.XPATH, '//div[@class="calendar-body"]')
             )
-        ).click()
-        self.teacher.find(
-            By.PARTIAL_LINK_TEXT, 'Add Reading').click()
-        assert('readings/new' in self.teacher.current_url()), \
-            'Not on the add a reading page'
-
-        self.teacher.find(
-            By.XPATH, "//input[@id = 'reading-title']").send_keys('Epic 28')
-        self.teacher.find(
-            By.XPATH, "//textarea[@class='form-control empty']").send_keys(
-            "instructions go here")
-        self.teacher.find(
-            By.XPATH, "//input[@id = 'hide-periods-radio']").click()
-
-        # Choose the first date calendar[0], second is calendar[1]
-        # and set the open date to today
-        self.teacher.driver.find_elements_by_xpath(
-            "//div[@class = 'datepicker__input-container']")[0].click()
-        self.teacher.driver.find_element_by_xpath(
-            "//div[@class = 'datepicker__day datepicker__day--today']").click()
-
-        # Choose the second date calendar[1], first is calendar[0]
-        self.teacher.driver.find_elements_by_xpath(
-            "//div[@class = 'datepicker__input-container']")[1].click()
-        while(self.teacher.find(
-            By.XPATH,
-            "//span[@class = 'datepicker__current-month']"
-        ).text != 'December 2016'):
-            self.teacher.find(
-                By.XPATH,
-                "//a[@class = 'datepicker__navigation datepicker__" +
-                "navigation--next']").click()
-
-        # Choose the due date of December 31, 2016
-        weekends = self.teacher.driver.find_elements_by_xpath(
-            "//div[@class = 'datepicker__day datepicker__day--weekend']")
-        for day in weekends:
-            if day.text == '31':
-                due = day
-                due.click()
-                break
-
-        # Choose reading sections, pick physics chapter 6 since it has a video
-        self.teacher.find(
-            By.XPATH, "//button[@id='reading-select']").click()
-        self.teacher.driver.find_elements_by_xpath(
-            "//span[@class='chapter-checkbox']")[5].click()
-        self.teacher.find(
-            By.XPATH,
-            "//button[@class='-show-problems btn btn-primary']").click()
-        self.teacher.sleep(10)
-
-        # Publish the assignment
-        self.teacher.find(
-            By.XPATH,
-            "//button[@class='async-button -publish btn btn-primary']").click()
-        self.teacher.sleep(60)
-
+        )
+        self.teacher.logout()
         self.student.login()
+        self.student.driver.find_element(
+            By.XPATH, "//div[@data-course-id='224']"
+        ).click()
 
     def tearDown(self):
         """Test destructor."""
@@ -138,42 +101,42 @@ class TestWorkAReading(unittest.TestCase):
                 job_id=str(self.student.driver.session_id),
                 **self.ps.test_updates
             )
-        try:
-            # Delete the assignment
-            assert('calendar' in self.teacher.current_url()), \
-                'Not viewing the calendar dashboard'
-
-            spans = self.teacher.driver.find_elements_by_tag_name('span')
-            for element in spans:
-                if element.text.endswith('2016'):
-                    month = element
-
-            # Change the calendar date if necessary
-            while (month.text != 'December 2016'):
-                self.teacher.find(
-                    By.XPATH,
-                    "//a[@class = 'calendar-header-control next']").click()
-
-            # Select the newly created assignment and delete it
-            assignments = self.teacher.driver.find_elements_by_tag_name(
-                'label')
-            for assignment in assignments:
-                if assignment.text == 'Epic 28':
-                    assignment.click()
-                    self.teacher.find(
-                        By.XPATH,
-                        "//a[@class='btn btn-default -edit-assignment']"
-                    ).click()
-                    self.teacher.find(
-                        By.XPATH,
-                        "//button[@class='async-button delete-link " +
-                        "pull-right btn btn-default']").click()
-                    self.teacher.find(
-                        By.XPATH, "//button[@class='btn btn-primary']").click()
-                    self.teacher.sleep(5)
-                    break
-        except:
-            pass
+        # try:
+        #     # Delete the assignment
+        #     assert('calendar' in self.teacher.current_url()), \
+        #         'Not viewing the calendar dashboard'
+        #
+        #     spans = self.teacher.driver.find_elements_by_tag_name('span')
+        #     for element in spans:
+        #         if element.text.endswith('2016'):
+        #             month = element
+        #
+        #     # Change the calendar date if necessary
+        #     while (month.text != 'December 2016'):
+        #         self.teacher.find(
+        #             By.XPATH,
+        #             "//a[@class = 'calendar-header-control next']").click()
+        #
+        #     # Select the newly created assignment and delete it
+        #     assignments = self.teacher.driver.find_elements_by_tag_name(
+        #         'label')
+        #     for assignment in assignments:
+        #         if assignment.text == 'Epic 28':
+        #             assignment.click()
+        #             self.teacher.find(
+        #                 By.XPATH,
+        #                 "//a[@class='btn btn-default -edit-assignment']"
+        #             ).click()
+        #             self.teacher.find(
+        #                 By.XPATH,
+        #                 "//button[@class='async-button delete-link " +
+        #                 "pull-right btn btn-default']").click()
+        #             self.teacher.find(
+        #                 By.XPATH, "//button[@class='btn btn-primary']").click()
+        #             self.teacher.sleep(5)
+        #             break
+        # except:
+        #     pass
         try:
             self.teacher.driver.refresh()
             self.teacher.sleep(5)
@@ -197,37 +160,24 @@ class TestWorkAReading(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't1.28.001' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't1',
-            't1.28',
-            't1.28.001',
-            '8184'
-        ]
+        self.ps.test_updates['tags'] = ['t1', 't1.28', 't1.28.001', '8184']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.student.select_course(appearance='physics')
-        assert('list' in self.student.current_url()), \
-            'Not viewing the calendar dashboard'
-
-        assignments = self.student.driver.find_elements_by_xpath(
-            "//div[@class='task row reading workable']")
-        for assignment in assignments:
-            if (assignment.text.find('Epic 28') >= 0):
-                assignment.click()
-                break
-
-        name = self.student.find(By.CLASS_NAME, 'center-control-assignment')
-
-        assert('Epic 28' in name.text), \
-            'Not viewing the reading'
+        assignment = self.student.driver.find_element(
+            By.XPATH, "//div[text()='%s']" % self.assignment_name)
+        Assignment().scroll_to(self.student.driver, assignment)
+        assignment.click()
+        # assert the assignment name is in the header
+        self.student.driver.find_element(
+            By.XPATH, "//span[text()='%s']" % self.assignment_name)
 
         self.ps.test_updates['passed'] = True
 
-    # Case C8185 - 002 - Student | Due date is listed in the footer
+    # Case C8185 - 002 - Student | Due date is listed in the header
     @pytest.mark.skipif(str(8185) not in TESTS, reason='Excluded')
-    def test_student_due_date_is_listed_in_the_footer_8185(self):
-        """Due date is listed in the footer.
+    def test_student_due_date_is_listed_in_the_header_8185(self):
+        """Due date is listed in the header.
 
         Steps:
         Click on a reading assignment under the tab
@@ -239,19 +189,26 @@ class TestWorkAReading(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't1.28.002' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't1',
-            't1.28',
-            't1.28.002',
-            '8185'
-        ]
+        self.ps.test_updates['tags'] = ['t1', 't1.28', 't1.28.002', '8185']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        raise NotImplementedError(inspect.currentframe().f_code.co_name)
+        assignment = self.student.driver.find_element(
+            By.XPATH, "//div[text()='%s']" % self.assignment_name)
+        Assignment().scroll_to(self.student.driver, assignment)
+        assignment.click()
+        # assert the due date is in the header
+        calendar = self.student.driver.find_element(
+            By.XPATH, '//button[contains(@class,"calendar")]')
+        actions = ActionChains(self.student.driver)
+        actions.move_to_element(calendar)
+        actions.perform()
+        self.student.driver.find_element(
+            By.XPATH, '//div[@role="tooltip"]//div[contains(text(),"Due")]')
 
         self.ps.test_updates['passed'] = True
 
+    '''
     # Case C8186 - 003 - Student | Reading sections are listed in the footer
     @pytest.mark.skipif(str(8186) not in TESTS, reason='Excluded')
     def test_student_reading_sections_are_listed_in_the_footer_8186(self):
@@ -266,19 +223,16 @@ class TestWorkAReading(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't1.28.003' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't1',
-            't1.28',
-            't1.28.003',
-            '8186'
-        ]
+        self.ps.test_updates['tags'] = ['t1', 't1.28', 't1.28.003', '8186']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
         raise NotImplementedError(inspect.currentframe().f_code.co_name)
 
         self.ps.test_updates['passed'] = True
+    '''
 
+    '''
     # Case C8187 - 004 - Student | Reading sections in the
     # footer link to the respective section in the reference book
     @pytest.mark.skipif(str(8187) not in TESTS, reason='Excluded')
@@ -295,21 +249,17 @@ class TestWorkAReading(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't1.28.004' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't1',
-            't1.28',
-            't1.28.004',
-            '8187'
-        ]
+        self.ps.test_updates['tags'] = ['t1', 't1.28', 't1.28.004', '8187']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
         raise NotImplementedError(inspect.currentframe().f_code.co_name)
 
         self.ps.test_updates['passed'] = True
+    '''
 
-    # Case C8188 - 005 - Student | Click the forward arrow
-    # to go to the next reading section
+    # Case C8188 - 003 - Student | Click the forward arrow to go to the next
+    # reading section
     @pytest.mark.skipif(str(8188) not in TESTS, reason='Excluded')
     def test_student_click_forward_arrow_to_go_to_next_section_8188(self):
         """Click the forward arrow to go to next reading section.
@@ -322,47 +272,48 @@ class TestWorkAReading(unittest.TestCase):
         Expected Result:
         The user is presented with the next reading section
         """
-        self.ps.test_updates['name'] = 't1.28.005' \
+        self.ps.test_updates['name'] = 't1.28.003' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't1',
-            't1.28',
-            't1.28.005',
-            '8188'
-        ]
+        self.ps.test_updates['tags'] = ['t1', 't1.28', 't1.28.003', '8188']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.student.select_course(appearance='physics')
-        assert('list' in self.student.current_url()), \
-            'Not viewing the calendar dashboard'
+        assignment = self.student.driver.find_element(
+            By.XPATH, "//div[text()='%s']" % self.assignment_name)
+        Assignment().scroll_to(self.student.driver, assignment)
+        assignment.click()
+        # assert the assignment name is in the header
+        self.student.driver.find_element(
+            By.XPATH, "//span[text()='%s']" % self.assignment_name)
+        # click on the next arrow
+        start_progress_bar = self.student.driver.find_element(
+            By.XPATH, '//div[@role="progressbar"]'
+        ).get_attribute("aria-valuenow")
+        self.student.sleep(2)
+        # self.student.driver.execute_script(
+        #     "window.scrollTo(0, document.body.scrollHeight);")
+        arrow = self.student.driver.find_element(
+            By.XPATH,
+            '//a[@aria-label="Go Forward" and contains(@class,"next")]'
+        )
+        print(arrow)
+        actions = ActionChains(self.student.driver)
+        actions.move_to_element(arrow)
+        actions.click()
+        actions.perform()
+        self.student.sleep(2)
+        end_progress_bar = self.student.driver.find_element(
+            By.XPATH, '//div[@role="progressbar"]'
+        ).get_attribute("aria-valuenow")
 
-        assignments = assignments = self.student.driver.find_elements_by_xpath(
-            "//div[@class='task row reading workable']")
-        for assignment in assignments:
-            if (assignment.text.find('Epic 28') >= 0):
-                assignment.click()
-                break
-
-        name = self.student.find(By.CLASS_NAME, 'center-control-assignment')
-
-        assert('Epic 28' in name.text), \
-            'Not viewing the reading'
-
-        assert('steps/1' in self.student.current_url()), \
-            'Not on the first page of the reading'
-
-        self.student.sleep(5)
-        self.student.find(By.XPATH, "//a[contains(@class,'arrow') and " +
-                          "contains(@class,'right')]").click()
-        self.student.sleep(5)
-
-        assert('steps/2' in self.student.current_url()), \
-            'Not on the second page of the reading'
+        assert(float(start_progress_bar) < float(end_progress_bar)), \
+            'Progress bar not moved'
+        assert("step/2" in self.student.current_url()), \
+            'Not moved to next page'
 
         self.ps.test_updates['passed'] = True
 
-    # Case C8189 - 006 - Student | If a card has a assessment free response
+    # Case C8189 - 004 - Student | If a card has a assessment free response
     # textbox, inputting a free response activates the Answer button
     @pytest.mark.skipif(str(8189) not in TESTS, reason='Excluded')
     def test_student_inputting_free_repsponse_activates_answer_btn_8189(self):
@@ -378,32 +329,16 @@ class TestWorkAReading(unittest.TestCase):
         Expected Result:
         The "Continue" button is activated
         """
-        self.ps.test_updates['name'] = 't1.28.story' \
+        self.ps.test_updates['name'] = 't1.28.004' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't1',
-            't1.28',
-            't1.28.story',
-            '8189'
-        ]
+        self.ps.test_updates['tags'] = ['t1', 't1.28', 't1.28.004', '8189']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.student.select_course(appearance='physics')
-        assert('list' in self.student.current_url()), \
-            'Not viewing the calendar dashboard'
-
-        assignments = self.student.driver.find_elements_by_xpath(
-            "//div[@class='task row reading workable']")
-        for assignment in assignments:
-            if (assignment.text.find('Epic 28') >= 0):
-                assignment.click()
-                break
-
-        name = self.student.find(By.CLASS_NAME, 'center-control-assignment')
-
-        assert('Epic 28' in name.text), \
-            'Not viewing the reading'
+        assignment = self.student.driver.find_element(
+            By.XPATH, "//div[text()='%s']" % self.assignment_name)
+        Assignment().scroll_to(self.student.driver, assignment)
+        assignment.click()
 
         while (1):
             while ('arrow right' in self.student.driver.page_source):
@@ -455,7 +390,7 @@ class TestWorkAReading(unittest.TestCase):
 
         self.ps.test_updates['passed'] = True
 
-    # Case C8190 - 007 - Student | Submit a free response answer
+    # Case C8190 - 005 - Student | Submit a free response answer
     @pytest.mark.skipif(str(8190) not in TESTS, reason='Excluded')
     def test_student_submit_a_free_response_answer_8190(self):
         """Submit a free response answer.
@@ -472,32 +407,16 @@ class TestWorkAReading(unittest.TestCase):
         A free response answer is submitted and the multiple choice is
         presented to the user
         """
-        self.ps.test_updates['name'] = 't1.28.007' \
+        self.ps.test_updates['name'] = 't1.28.005' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't1',
-            't1.28',
-            't1.28.007',
-            '8190'
-        ]
+        self.ps.test_updates['tags'] = ['t1', 't1.28', 't1.28.005', '8190']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.student.select_course(appearance='physics')
-        assert('list' in self.student.current_url()), \
-            'Not viewing the calendar dashboard'
-
-        assignments = self.student.driver.find_elements_by_xpath(
-            "//div[@class='task row reading workable']")
-        for assignment in assignments:
-            if (assignment.text.find('Epic 28') >= 0):
-                assignment.click()
-                break
-
-        name = self.student.find(By.CLASS_NAME, 'center-control-assignment')
-
-        assert('Epic 28' in name.text), \
-            'Not viewing the reading'
+        assignment = self.student.driver.find_element(
+            By.XPATH, "//div[text()='%s']" % self.assignment_name)
+        Assignment().scroll_to(self.student.driver, assignment)
+        assignment.click()
 
         while(1):
             while ('arrow right' in self.student.driver.page_source):
@@ -558,7 +477,7 @@ class TestWorkAReading(unittest.TestCase):
 
         self.ps.test_updates['passed'] = True
 
-    # Case C8191 - 008 - Student | Selecting a multiple choice answer
+    # Case C8191 - 006 - Student | Selecting a multiple choice answer
     # activates the Submit button
     @pytest.mark.skipif(str(8191) not in TESTS, reason='Excluded')
     def test_student_selecting_multiple_choice_activates_the_submit_8191(self):
@@ -576,32 +495,16 @@ class TestWorkAReading(unittest.TestCase):
         Expected Result:
         The "Continue" button is activated
         """
-        self.ps.test_updates['name'] = 't1.28.008' \
+        self.ps.test_updates['name'] = 't1.28.006' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't1',
-            't1.28',
-            't1.28.008',
-            '8191'
-        ]
+        self.ps.test_updates['tags'] = ['t1', 't1.28', 't1.28.006', '8191']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.student.select_course(appearance='physics')
-        assert('list' in self.student.current_url()), \
-            'Not viewing the calendar dashboard'
-
-        assignments = self.student.driver.find_elements_by_xpath(
-            "//div[@class='task row reading workable']")
-        for assignment in assignments:
-            if (assignment.text.find('Epic 28') >= 0):
-                assignment.click()
-                break
-
-        name = self.student.find(By.CLASS_NAME, 'center-control-assignment')
-
-        assert('Epic 28' in name.text), \
-            'Not viewing the reading'
+        assignment = self.student.driver.find_element(
+            By.XPATH, "//div[text()='%s']" % self.assignment_name)
+        Assignment().scroll_to(self.student.driver, assignment)
+        assignment.click()
 
         while(1):
             while ('arrow right' in self.student.driver.page_source):
@@ -659,7 +562,7 @@ class TestWorkAReading(unittest.TestCase):
 
         self.ps.test_updates['passed'] = True
 
-    # Case C8192 - 009 - Student | Submit a multiple choice answer
+    # Case C8192 - 007 - Student | Submit a multiple choice answer
     @pytest.mark.skipif(str(8192) not in TESTS, reason='Excluded')
     def test_student_submit_a_multiple_choice_answer_8192(self):
         """Submit a multiple choice answer.
@@ -677,32 +580,16 @@ class TestWorkAReading(unittest.TestCase):
         Expected Result:
         A multiple choice answer is submitted
         """
-        self.ps.test_updates['name'] = 't1.28.009' \
+        self.ps.test_updates['name'] = 't1.28.007' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't1',
-            't1.28',
-            't1.28.009',
-            '8192'
-        ]
+        self.ps.test_updates['tags'] = ['t1', 't1.28', 't1.28.007', '8192']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.student.select_course(appearance='physics')
-        assert('list' in self.student.current_url()), \
-            'Not viewing the calendar dashboard'
-
-        assignments = self.student.driver.find_elements_by_xpath(
-            "//div[@class='task row reading workable']")
-        for assignment in assignments:
-            if (assignment.text.find('Epic 28') >= 0):
-                assignment.click()
-                break
-
-        name = self.student.find(By.CLASS_NAME, 'center-control-assignment')
-
-        assert('Epic 28' in name.text), \
-            'Not viewing the reading'
+        assignment = self.student.driver.find_element(
+            By.XPATH, "//div[text()='%s']" % self.assignment_name)
+        Assignment().scroll_to(self.student.driver, assignment)
+        assignment.click()
 
         while(1):
             while ('arrow right' in self.student.driver.page_source):
@@ -764,7 +651,7 @@ class TestWorkAReading(unittest.TestCase):
 
         self.ps.test_updates['passed'] = True
 
-    # Case C8193 - 010 - Student | Answer feedback is presented
+    # Case C8193 - 008 - Student | Answer feedback is presented
     @pytest.mark.skipif(str(8193) not in TESTS, reason='Excluded')
     def test_student_answer_feedback_is_presented_8193(self):
         """Answer feedback is presented.
@@ -782,32 +669,16 @@ class TestWorkAReading(unittest.TestCase):
         Expected Result:
         Answer feedback is presented to the user
         """
-        self.ps.test_updates['name'] = 't1.28.010' \
+        self.ps.test_updates['name'] = 't1.28.008' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't1',
-            't1.28',
-            't1.28.010',
-            '8193'
-        ]
+        self.ps.test_updates['tags'] = ['t1', 't1.28', 't1.28.008', '8193']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.student.select_course(appearance='physics')
-        assert('list' in self.student.current_url()), \
-            'Not viewing the calendar dashboard'
-
-        assignments = self.student.driver.find_elements_by_xpath(
-            "//div[@class='task row reading workable']")
-        for assignment in assignments:
-            if (assignment.text.find('Epic 28') >= 0):
-                assignment.click()
-                break
-
-        name = self.student.find(By.CLASS_NAME, 'center-control-assignment')
-
-        assert('Epic 28' in name.text), \
-            'Not viewing the reading'
+        assignment = self.student.driver.find_element(
+            By.XPATH, "//div[text()='%s']" % self.assignment_name)
+        Assignment().scroll_to(self.student.driver, assignment)
+        assignment.click()
 
         while(1):
             while ('arrow right' in self.student.driver.page_source):
@@ -869,7 +740,7 @@ class TestWorkAReading(unittest.TestCase):
 
         self.ps.test_updates['passed'] = True
 
-    # Case C8194 - 011 - Student | Correctness for a completed
+    # Case C8194 - 009 - Student | Correctness for a completed
     # assessment is displayed in the breadcrumbs
     @pytest.mark.skipif(str(8194) not in TESTS, reason='Excluded')
     def test_student_correctness_displayed_in_breadcrumb_8194(self):
@@ -888,14 +759,9 @@ class TestWorkAReading(unittest.TestCase):
         Expected Result:
 
         """
-        self.ps.test_updates['name'] = 't1.28.011' \
+        self.ps.test_updates['name'] = 't1.28.009' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't1',
-            't1.28',
-            't1.28.011',
-            '8194'
-        ]
+        self.ps.test_updates['tags'] = ['t1', 't1.28', 't1.28.009', '8194']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
@@ -925,12 +791,7 @@ class TestWorkAReading(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't1.28.012' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't1',
-            't1.28',
-            't1.28.012',
-            '8195'
-        ]
+        self.ps.test_updates['tags'] = ['t1', 't1.28', 't1.28.012', '8195']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
@@ -961,12 +822,7 @@ class TestWorkAReading(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't1.28.013' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't1',
-            't1.28',
-            't1.28.013',
-            '8196'
-        ]
+        self.ps.test_updates['tags'] = ['t1', 't1.28', 't1.28.013', '8196']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
@@ -975,6 +831,7 @@ class TestWorkAReading(unittest.TestCase):
         self.ps.test_updates['passed'] = True
     '''
 
+    '''
     # Case C8197 - 014 - Student | Select Try Another to receive a new
     # assessment
     @pytest.mark.skipif(str(8197) not in TESTS, reason='Excluded')
@@ -997,18 +854,14 @@ class TestWorkAReading(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't1.28.014' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't1',
-            't1.28',
-            't1.28.014',
-            '8197'
-        ]
+        self.ps.test_updates['tags'] = ['t1', 't1.28', 't1.28.014', '8197']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
         raise NotImplementedError(inspect.currentframe().f_code.co_name)
 
         self.ps.test_updates['passed'] = True
+    '''
 
     '''
     # Case C8198 - 015 - Student | Select Move On
@@ -1032,12 +885,7 @@ class TestWorkAReading(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't1.28.015' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't1',
-            't1.28',
-            't1.28.015',
-            '8198'
-        ]
+        self.ps.test_updates['tags'] = ['t1', 't1.28', 't1.28.015', '8198']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
@@ -1045,8 +893,8 @@ class TestWorkAReading(unittest.TestCase):
 
         self.ps.test_updates['passed'] = True
     '''
-    
-    # Case C8199 - 016 - Student | If a card has a video, play the video
+
+    # Case C8199 - 014 - Student | If a card has a video, play the video
     @pytest.mark.skipif(str(8199) not in TESTS, reason='Excluded')
     def test_student_if_a_card_has_a_video_play_the_videio_8199(self):
         """If a card has a video, play the video.
@@ -1060,32 +908,16 @@ class TestWorkAReading(unittest.TestCase):
         Expected Result:
         The video plays
         """
-        self.ps.test_updates['name'] = 't1.28.016' \
+        self.ps.test_updates['name'] = 't1.28.014' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't1',
-            't1.28',
-            't1.28.016',
-            '8199'
-        ]
+        self.ps.test_updates['tags'] = ['t1', 't1.28', 't1.28.014', '8199']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.student.select_course(appearance='physics')
-        assert('list' in self.student.current_url()), \
-            'Not viewing the calendar dashboard'
-
-        assignments = self.student.driver.find_elements_by_xpath(
-            "//div[@class='task row reading workable']")
-        for assignment in assignments:
-            if (assignment.text.find('Epic 28') >= 0):
-                assignment.click()
-                break
-
-        name = self.student.find(By.CLASS_NAME, 'center-control-assignment')
-
-        assert('Epic 28' in name.text), \
-            'Not viewing the reading'
+        assignment = self.student.driver.find_element(
+            By.XPATH, "//div[text()='%s']" % self.assignment_name)
+        Assignment().scroll_to(self.student.driver, assignment)
+        assignment.click()
 
         while(1):
             while ('arrow right' in self.student.driver.page_source and
@@ -1152,6 +984,7 @@ class TestWorkAReading(unittest.TestCase):
 
         self.ps.test_updates['passed'] = True
 
+    '''
     # Case C8200 - 017 - Student | A Concept Coach card preceeds the question
     # review
     @pytest.mark.skipif(str(8200) not in TESTS, reason='Excluded')
@@ -1169,19 +1002,10 @@ class TestWorkAReading(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't1.28.017' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't1',
-            't1.28',
-            't1.28.017',
-            '8200'
-        ]
+        self.ps.test_updates['tags'] = ['t1', 't1.28', 't1.28.017', '8200']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.student.select_course(appearance='physics')
-        assert('list' in self.student.current_url()), \
-            'Not viewing the calendar dashboard'
-
         assignments = self.student.driver.find_elements_by_xpath(
             "//div[@class='task row reading workable']")
         for assignment in assignments:
@@ -1261,11 +1085,13 @@ class TestWorkAReading(unittest.TestCase):
             self.student.sleep(2)
 
         self.ps.test_updates['passed'] = True
+    '''
 
-    # Case C8201 - 018 - Student | A reading may have a Review assessment
+    # Case C8201 - 016 - Student | A reading may have a Spaced Practice
+    # assessment
     @pytest.mark.skipif(str(8201) not in TESTS, reason='Excluded')
-    def test_student_reading_may_have_review_assessment_8201(self):
-        """A reading may have a Review assessment.
+    def test_student_reading_may_have_a_spaced_practice_assessment_8201(self):
+        """A reading may have a Spaced Practice assessment.
 
         Steps:
         Click on a reading assignment under the tab
@@ -1273,35 +1099,19 @@ class TestWorkAReading(unittest.TestCase):
         Click the forward arrow
 
         Expected Result:
-        The user may be presented with a Review assessment at the
+        The user may be presented with a space practice assessment at the
         end of the reading assignment
         """
-        self.ps.test_updates['name'] = 't1.28.018' \
+        self.ps.test_updates['name'] = 't1.28.016' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't1',
-            't1.28',
-            't1.28.018',
-            '8201'
-        ]
+        self.ps.test_updates['tags'] = ['t1', 't1.28', 't1.28.016', '8201']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.student.select_course(appearance='physics')
-        assert('list' in self.student.current_url()), \
-            'Not viewing the calendar dashboard'
-
-        assignments = self.student.driver.find_elements_by_xpath(
-            "//div[@class='task row reading workable']")
-        for assignment in assignments:
-            if (assignment.text.find('Epic 28') >= 0):
-                assignment.click()
-                break
-
-        name = self.student.find(By.CLASS_NAME, 'center-control-assignment')
-
-        assert('Epic 28' in name.text), \
-            'Not viewing the reading'
+        assignment = self.student.driver.find_element(
+            By.XPATH, "//div[text()='%s']" % self.assignment_name)
+        Assignment().scroll_to(self.student.driver, assignment)
+        assignment.click()
 
         flag = False
 
@@ -1388,7 +1198,7 @@ class TestWorkAReading(unittest.TestCase):
 
         self.ps.test_updates['passed'] = True
 
-    # Case C8202 - 019 - Student | A reading may have a Personalized assessment
+    # Case C8202 - 017 - Student | A reading may have a Personalized assessment
     @pytest.mark.skipif(str(8202) not in TESTS, reason='Excluded')
     def test_student_reading_may_have_personalized_assessment_8202(self):
         """A reading may have a Personalized assessment.
@@ -1402,32 +1212,16 @@ class TestWorkAReading(unittest.TestCase):
         A user may be presented with a personalized assessment at the end of
         the reading assignment
         """
-        self.ps.test_updates['name'] = 't1.28.019' \
+        self.ps.test_updates['name'] = 't1.28.017' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't1',
-            't1.28',
-            't1.28.019',
-            '8202'
-        ]
+        self.ps.test_updates['tags'] = ['t1', 't1.28', 't1.28.017', '8202']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.student.select_course(appearance='physics')
-        assert('list' in self.student.current_url()), \
-            'Not viewing the calendar dashboard'
-
-        assignments = self.student.driver.find_elements_by_xpath(
-            "//div[@class='task row reading workable']")
-        for assignment in assignments:
-            if (assignment.text.find('Epic 28') >= 0):
-                assignment.click()
-                break
-
-        name = self.student.find(By.CLASS_NAME, 'center-control-assignment')
-
-        assert('Epic 28' in name.text), \
-            'Not viewing the reading'
+        assignment = self.student.driver.find_element(
+            By.XPATH, "//div[text()='%s']" % self.assignment_name)
+        Assignment().scroll_to(self.student.driver, assignment)
+        assignment.click()
 
         flag = False
 
@@ -1516,7 +1310,7 @@ class TestWorkAReading(unittest.TestCase):
 
         self.ps.test_updates['passed'] = True
 
-    # Case C8203 - 020 - Student | View the completion report and click the
+    # Case C8203 - 018 - Student | View the completion report and click the
     # Back To Dashboard button to return to the dashboard
     @pytest.mark.skipif(str(8203) not in TESTS, reason='Excluded')
     def test_student_view_completion_report_8203(self):
@@ -1531,32 +1325,16 @@ class TestWorkAReading(unittest.TestCase):
         Expected Result:
         The user views the completion report and return to the dashboard
         """
-        self.ps.test_updates['name'] = 't1.28.020' \
+        self.ps.test_updates['name'] = 't1.28.018' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't1',
-            't1.28',
-            't1.28.020',
-            '8203'
-        ]
+        self.ps.test_updates['tags'] = ['t1', 't1.28', 't1.28.018', '8203']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.student.select_course(appearance='physics')
-        assert('list' in self.student.current_url()), \
-            'Not viewing the calendar dashboard'
-
-        assignments = self.student.driver.find_elements_by_xpath(
-            "//div[@class='task row reading workable']")
-        for assignment in assignments:
-            if (assignment.text.find('Epic 28') >= 0):
-                assignment.click()
-                break
-
-        name = self.student.find(By.CLASS_NAME, 'center-control-assignment')
-
-        assert('Epic 28' in name.text), \
-            'Not viewing the reading'
+        assignment = self.student.driver.find_element(
+            By.XPATH, "//div[text()='%s']" % self.assignment_name)
+        Assignment().scroll_to(self.student.driver, assignment)
+        assignment.click()
 
         while(1):
             while ('arrow right' in self.student.driver.page_source):
@@ -1630,7 +1408,7 @@ class TestWorkAReading(unittest.TestCase):
 
         self.ps.test_updates['passed'] = True
 
-    # Case C8204 - 021 - Student | A completed reading should show
+    # Case C8204 - 019 - Student | A completed reading should show
     # 'You are done.' in the completion report
     @pytest.mark.skipif(str(8204) not in TESTS, reason='Excluded')
     def test_student_completed_reading_shows_you_are_done_8204(self):
@@ -1646,21 +1424,12 @@ class TestWorkAReading(unittest.TestCase):
         Once finished with the reading, the user is presented with the
         completion report that shows 'You are done'
         """
-        self.ps.test_updates['name'] = 't1.28.021' \
+        self.ps.test_updates['name'] = 't1.28.019' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't1',
-            't1.28',
-            't1.28.021',
-            '8204'
-        ]
+        self.ps.test_updates['tags'] = ['t1', 't1.28', 't1.28.019', '8204']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.student.select_course(appearance='physics')
-        assert('list' in self.student.current_url()), \
-            'Not viewing the calendar dashboard'
-
         assignments = self.student.driver.find_elements_by_xpath(
             "//div[@class='task row reading workable']")
         for assignment in assignments:
@@ -1748,7 +1517,7 @@ class TestWorkAReading(unittest.TestCase):
 
         self.ps.test_updates['passed'] = True
 
-    # Case C8205 - 022 - Student | A completed reading should show Complete
+    # Case C8205 - 020 - Student | A completed reading should show Complete
     # in the dashboard progress column
     @pytest.mark.skipif(str(8205) not in TESTS, reason='Excluded')
     def test_student_completed_reading_shows_complete_in_dashboard_8205(self):
@@ -1763,21 +1532,12 @@ class TestWorkAReading(unittest.TestCase):
         Expected Result:
         The reading is marked "Complete" in the dashboard progress column
         """
-        self.ps.test_updates['name'] = 't1.28.022' \
+        self.ps.test_updates['name'] = 't1.28.020' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't1',
-            't1.28',
-            't1.28.022',
-            '8205'
-        ]
+        self.ps.test_updates['tags'] = ['t1', 't1.28', 't1.28.020', '8205']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.student.select_course(appearance='physics')
-        assert('list' in self.student.current_url()), \
-            'Not viewing the calendar dashboard'
-
         assignments = self.student.driver.find_elements_by_xpath(
             "//div[@class='task row reading workable']")
         for assignment in assignments:
@@ -1875,7 +1635,7 @@ class TestWorkAReading(unittest.TestCase):
 
         self.ps.test_updates['passed'] = True
 
-    # Case C8206 - 023 - Student | Answer an assessment, return to the
+    # Case C8206 - 021 - Student | Answer an assessment, return to the
     # dashboard and verify the assignment progress is In progress
     @pytest.mark.skipif(str(8206) not in TESTS, reason='Excluded')
     def test_student_started_assignment_shows_progress_on_dashboard_8206(self):
@@ -1898,21 +1658,12 @@ class TestWorkAReading(unittest.TestCase):
         The user returns to dashboard and the reading is marked "In Progress"
         in the dashboard progress column
         """
-        self.ps.test_updates['name'] = 't1.28.023' \
+        self.ps.test_updates['name'] = 't1.28.021' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't1',
-            't1.28',
-            't1.28.023',
-            '8206'
-        ]
+        self.ps.test_updates['tags'] = ['t1', 't1.28', 't1.28.021', '8206']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.student.select_course(appearance='physics')
-        assert('list' in self.student.current_url()), \
-            'Not viewing the calendar dashboard'
-
         home = self.student.current_url()
 
         assignments = self.student.driver.find_elements_by_xpath(
