@@ -29,10 +29,11 @@ LOCAL_RUN = os.getenv('LOCALRUN', 'false').lower() == 'true'
 TESTS = os.getenv(
     'CASELIST',
     str([
-        8184, 8185, 8188, 8189, 8190,
-        8191, 8192, 8193, 8194, 8195,
-        8196, 8199, 8201, 8202, 8203,
-        8204, 8205, 8206
+        8188
+        # 8184, 8185, 8188, 8189, 8190,
+        # 8191, 8192, 8193, 8194, 8195,
+        # 8196, 8199, 8201, 8202, 8203,
+        # 8204, 8205, 8206
     ])
 )
 
@@ -289,19 +290,11 @@ class TestWorkAReading(unittest.TestCase):
         start_progress_bar = self.student.driver.find_element(
             By.XPATH, '//div[@role="progressbar"]'
         ).get_attribute("aria-valuenow")
-        self.student.sleep(2)
-        # self.student.driver.execute_script(
-        #     "window.scrollTo(0, document.body.scrollHeight);")
-        arrow = self.student.driver.find_element(
+        self.student.driver.find_element(
             By.XPATH,
             '//a[@aria-label="Go Forward" and contains(@class,"next")]'
-        )
-        print(arrow)
-        actions = ActionChains(self.student.driver)
-        actions.move_to_element(arrow)
-        actions.click()
-        actions.perform()
-        self.student.sleep(2)
+        ).click()
+        self.student.sleep(0.5)
         end_progress_bar = self.student.driver.find_element(
             By.XPATH, '//div[@role="progressbar"]'
         ).get_attribute("aria-valuenow")
