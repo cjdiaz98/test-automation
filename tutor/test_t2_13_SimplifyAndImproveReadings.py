@@ -28,8 +28,9 @@ LOCAL_RUN = os.getenv('LOCALRUN', 'false').lower() == 'true'
 TESTS = os.getenv(
     'CASELIST',
     str([
-        14745, 14746, 85291, 100126, 100127,
-        100128
+        14745
+        # 14745, 14746, 85291, 100126, 100127,
+        # 100128
     ])
 )
 
@@ -42,14 +43,30 @@ class TestSimplifyAndImproveReadings(unittest.TestCase):
         """Pretest settings."""
         self.ps = PastaSauce()
         self.desired_capabilities['name'] = self.id()
-        self.teacher = Teacher(
-            use_env_vars=True,
-            pasta_user=self.ps,
-            capabilities=self.desired_capabilities
-        )
+        if not LOCAL_RUN:
+            self.teacher = Teacher(
+                use_env_vars=True,
+                pasta_user=self.ps,
+                capabilities=self.desired_capabilities
+            )
+            self.student = Student(
+                existing_driver=self.teacher.driver,
+                use_env_vars=True,
+                pasta_user=self.ps,
+                capabilities=self.desired_capabilities
+            )
+        else:
+            self.teacher = Teacher(
+                use_env_vars=True,
+            )
+            self.student = Student(
+                existing_driver=self.teacher.driver,
+                use_env_vars=True,
+            )
         # create a reading for the student to work
         self.teacher.login()
-        self.assignment_name = 't1.18 reading-%s' % randint(100, 999)
+        self.teacher.select_course(title='College Physics with Courseware')
+        self.assignment_name = 't2.13 reading-%s' % randint(100, 999)
         today = datetime.date.today()
         begin = today.strftime('%m/%d/%Y')
         end = (today + datetime.timedelta(days=randint(1, 10))) \
@@ -58,7 +75,7 @@ class TestSimplifyAndImproveReadings(unittest.TestCase):
             assignment='reading',
             args={
                 'title': self.assignment_name,
-                'description': chomsky(),
+                'description': "description",
                 'periods': {'all': (begin, end)},
                 'reading_list': ['1.1', '1.2'],
                 'status': 'publish',
@@ -71,23 +88,20 @@ class TestSimplifyAndImproveReadings(unittest.TestCase):
         )
         self.teacher.logout()
         # login as a student to work the reading
-        self.student = Student(
-            existing_driver=self.teacher.driver,
-            use_env_vars=True,
-            pasta_user=self.ps,
-            capabilities=self.desired_capabilities
-        )
         self.student.login()
+        self.student.select_course(title='College Physics with Courseware')
         self.student.wait.until(
             expect.visibility_of_element_located(
                 (By.LINK_TEXT, 'This Week')
             )
         )
+        print(self.assignment_name)
+        self.student.sleep(3)
         reading = self.student.driver.find_element(
             By.XPATH,
-            '//span[text()="%s"]' % self.assignment_name
+            '//div[text()="%s"]' % self.assignment_name
         )
-        self.teacher.driver.execute_script(
+        self.student.driver.execute_script(
             'return arguments[0].scrollIntoView();',
             reading
         )
