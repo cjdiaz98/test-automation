@@ -7,12 +7,11 @@ import pytest
 import unittest
 import datetime
 
-from autochomsky import chomsky
 from pastasauce import PastaSauce, PastaDecorator
 from random import randint
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as expect
-# from staxing.assignment import Assignment
+from staxing.assignment import Assignment
 
 # select user types: Admin, ContentQA, Teacher, and/or Student
 from staxing.helper import Teacher, Student
@@ -28,7 +27,7 @@ LOCAL_RUN = os.getenv('LOCALRUN', 'false').lower() == 'true'
 TESTS = os.getenv(
     'CASELIST',
     str([
-        14745
+        100127
         # 14745, 14746, 85291, 100126, 100127,
         # 100128
     ])
@@ -63,50 +62,6 @@ class TestSimplifyAndImproveReadings(unittest.TestCase):
                 existing_driver=self.teacher.driver,
                 use_env_vars=True,
             )
-        # create a reading for the student to work
-        self.teacher.login()
-        self.teacher.select_course(title='College Physics with Courseware')
-        self.assignment_name = 't2.13 reading-%s' % randint(100, 999)
-        today = datetime.date.today()
-        begin = today.strftime('%m/%d/%Y')
-        end = (today + datetime.timedelta(days=randint(1, 10))) \
-            .strftime('%m/%d/%Y')
-        self.teacher.add_assignment(
-            assignment='reading',
-            args={
-                'title': self.assignment_name,
-                'description': "description",
-                'periods': {'all': (begin, end)},
-                'reading_list': ['1.1', '1.2'],
-                'status': 'publish',
-            }
-        )
-        self.teacher.wait.until(
-            expect.visibility_of_element_located(
-                (By.XPATH, '//div[contains(@class,"calendar-container")]')
-            )
-        )
-        self.teacher.logout()
-        # login as a student to work the reading
-        self.student.login()
-        self.student.select_course(title='College Physics with Courseware')
-        self.student.wait.until(
-            expect.visibility_of_element_located(
-                (By.LINK_TEXT, 'This Week')
-            )
-        )
-        print(self.assignment_name)
-        self.student.sleep(3)
-        reading = self.student.driver.find_element(
-            By.XPATH,
-            '//div[text()="%s"]' % self.assignment_name
-        )
-        self.student.driver.execute_script(
-            'return arguments[0].scrollIntoView();',
-            reading
-        )
-        self.teacher.driver.execute_script('window.scrollBy(0, -80);')
-        reading.click()
 
     def tearDown(self):
         """Test destructor."""
@@ -120,6 +75,61 @@ class TestSimplifyAndImproveReadings(unittest.TestCase):
             self.teacher.delete()
         except:
             pass
+
+    def create_a_reading_and_click_on_it(self):
+        """
+        Login as a teacher and create a reading, then logout
+        Login as a student and click on the reading
+        """
+        # create a reading for the student to work
+        self.teacher.login()
+        course = self.teacher.find(
+            By.XPATH, '//div[@data-title="College Physics with Courseware"]')
+        course_id = course.get_attribute('data-course-id')
+        course.click()
+        self.teacher.sleep(4)
+        self.assignment_name = 't1.13 reading-%s' % randint(100, 999)
+        today = datetime.date.today()
+        begin = today.strftime('%m/%d/%Y')
+        end = (today + datetime.timedelta(days=randint(1, 10))) \
+            .strftime('%m/%d/%Y')
+        self.teacher.add_assignment(
+            assignment='reading',
+            args={
+                'title': self.assignment_name,
+                'description': 'description',
+                'periods': {'all': (begin, end)},
+                'reading_list': ['1.1', '1.2'],
+                'status': 'publish',
+            }
+        )
+        self.teacher.wait.until(
+            expect.visibility_of_element_located(
+                (By.XPATH, '//div[contains(@class,"calendar-container")]')
+            )
+        )
+        self.teacher.logout()
+        # login as a student to work the reading
+        self.student.login()
+        print(course_id)
+        self.student.find(
+            By.XPATH, "//div[@data-course-id='" + course_id + "']"
+        ).click()
+        self.student.wait.until(
+            expect.visibility_of_element_located(
+                (By.LINK_TEXT, 'This Week')
+            )
+        )
+        reading = self.student.driver.find_element(
+            By.XPATH,
+            '//div[text()="%s"]' % self.assignment_name
+        )
+        self.teacher.driver.execute_script(
+            'return arguments[0].scrollIntoView();',
+            reading
+        )
+        self.teacher.driver.execute_script('window.scrollBy(0, -80);')
+        reading.click()
 
     # 14745 - 001 - Student | Relative size and progress are displayed while
     # working a reading assignment
@@ -146,6 +156,7 @@ class TestSimplifyAndImproveReadings(unittest.TestCase):
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
+        self.create_a_reading_and_click_on_it()
         self.student.driver.find_element(
             By.XPATH,
             '//div[contains(@class,"progress-bar progress-bar-success")]')
@@ -172,31 +183,11 @@ class TestSimplifyAndImproveReadings(unittest.TestCase):
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.student.find(By.CSS_SELECTOR, 'a.paging-control.next').click()
-        self.student.sleep(1)
-        self.student.find(By.CSS_SELECTOR, 'a.milestones-toggle').click()
-        self.student.sleep(1)
-        cards = self.student.find_all(
-            By.CSS_SELECTOR,
-            'div[class="milestone"]'
+        self.create_a_reading_and_click_on_it()
+        self.student.find(By.XPATH, '//a[@class="milestones-toggle"]').click()
+        self.student.find(
+            By.XPATH, '//div[contains(@class,"milestone-reading")]'
         )
-        preview = ''
-        if not isinstance(cards, list):
-            preview = cards.find_element(
-                By.XPATH,
-                '/div[@class="milestone-preview"]'
-            ).text
-            cards.click()
-        else:
-            card = randint(0, len(cards) - 1)
-            preview = cards[card].find_element(
-                By.XPATH,
-                '/div[@class="milestone-preview"]'
-            ).text
-            cards[card].click()
-        # Issue: section titles are not in the content
-        preview
-
         self.ps.test_updates['passed'] = True
 
     # C85291 - 003 - Student | Reading Review card appears before the first
@@ -271,7 +262,24 @@ class TestSimplifyAndImproveReadings(unittest.TestCase):
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        raise NotImplementedError(inspect.currentframe().f_code.co_name)
+        self.teacher.login()
+        self.teacher.find(
+            By.XPATH, '//div[@data-title="College Physics with Courseware"]'
+        ).click()
+        book = self.teacher.find(
+            By.XPATH, '//a[text()="Browse the Book"]')
+        Assignment.scroll_to(self.teacher.driver, book)
+        book.click()
+        window_with_book = self.teacher.driver.window_handles[1]
+        self.teacher.driver.switch_to_window(window_with_book)
+        assert('book' in self.teacher.current_url()), \
+            'Not viewing the textbook PDF'
+        self.teacher.find(
+            By.XPATH, '//li[@data-section="1.1"]'
+        ).click()
+        self.teacher.find(
+            By.XPATH, '//h4//span[text()="1.1"]'
+        ).click()
 
         self.ps.test_updates['passed'] = True
 
@@ -296,6 +304,23 @@ class TestSimplifyAndImproveReadings(unittest.TestCase):
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        raise NotImplementedError(inspect.currentframe().f_code.co_name)
+        self.student.login()
+        self.student.find(
+            By.XPATH, '//div[@data-title="College Physics with Courseware"]'
+        ).click()
+        book = self.student.find(
+            By.XPATH, '//a[text()="Browse the Book"]')
+        Assignment.scroll_to(self.student.driver, book)
+        book.click()
+        window_with_book = self.student.driver.window_handles[1]
+        self.student.driver.switch_to_window(window_with_book)
+        assert('book' in self.student.current_url()), \
+            'Not viewing the textbook PDF'
+        self.student.find(
+            By.XPATH, '//li[@data-section="1.1"]'
+        ).click()
+        self.student.find(
+            By.XPATH, '//h4//span[text()="1.1"]'
+        ).click()
 
         self.ps.test_updates['passed'] = True
