@@ -53,23 +53,36 @@ class TestQuestionWork(unittest.TestCase):
         self.ps = PastaSauce()
         self.desired_capabilities['name'] = self.id()
 
-        self.teacher = Teacher(
-            use_env_vars=True,
-            pasta_user=self.ps,
-            capabilities=self.desired_capabilities
-        )
-        self.content = ContentQA(
-            use_env_vars=True,
-            pasta_user=self.ps,
-            capabilities=self.desired_capabilities,
-            existing_driver=self.teacher.driver
-        )
-        self.student = Student(
-            use_env_vars=True,
-            pasta_user=self.ps,
-            capabilities=self.desired_capabilities,
-            existing_driver=self.teacher.driver
-        )
+        if not LOCAL_RUN:
+            self.teacher = Teacher(
+                use_env_vars=True,
+                pasta_user=self.ps,
+                capabilities=self.desired_capabilities
+            )
+            self.content = ContentQA(
+                use_env_vars=True,
+                pasta_user=self.ps,
+                capabilities=self.desired_capabilities,
+                existing_driver=self.teacher.driver
+            )
+            self.student = Student(
+                use_env_vars=True,
+                pasta_user=self.ps,
+                capabilities=self.desired_capabilities,
+                existing_driver=self.teacher.driver
+            )
+        else:
+            self.teacher = Teacher(
+                use_env_vars=True,
+            )
+            self.content = ContentQA(
+                use_env_vars=True,
+                existing_driver=self.teacher.driver
+            )
+            self.student = Student(
+                use_env_vars=True,
+                existing_driver=self.teacher.driver
+            )
 
     def tearDown(self):
         """Test destructor."""
