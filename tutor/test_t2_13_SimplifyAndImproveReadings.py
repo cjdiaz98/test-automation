@@ -11,6 +11,7 @@ from pastasauce import PastaSauce, PastaDecorator
 from random import randint
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as expect
+from selenium.common.exceptions import NoSuchElementException
 from staxing.assignment import Assignment
 
 # select user types: Admin, ContentQA, Teacher, and/or Student
@@ -27,8 +28,9 @@ LOCAL_RUN = os.getenv('LOCALRUN', 'false').lower() == 'true'
 TESTS = os.getenv(
     'CASELIST',
     str([
-        14745, 14746, 85291, 100126, 100127,
-        100128
+        85291
+        # 14745, 14746, 85291, 100126, 100127,
+        # 100128
     ])
 )
 
@@ -185,7 +187,7 @@ class TestSimplifyAndImproveReadings(unittest.TestCase):
         self.create_a_reading_and_click_on_it()
         self.student.find(By.XPATH, '//a[@class="milestones-toggle"]').click()
         self.student.find(
-            By.XPATH, '//div[contains(@class,"milestone-reading")]'
+            By.XPATH, '//div[contains(@class,"milestone")]'
         )
         self.ps.test_updates['passed'] = True
 
@@ -210,8 +212,49 @@ class TestSimplifyAndImproveReadings(unittest.TestCase):
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        raise NotImplementedError(inspect.currentframe().f_code.co_name)
+        self.create_a_reading_and_click_on_it()
+        spaced_into = False
+        while(True):
+            self.student.find(
+                By.XPATH, '//a[@class="paging-control next"]').click()
 
+            # look for Spaced practice intro
+            try:
+                self.student.find(
+                    By.XPATH,
+                    '//div[contains(@class,"-spaced-practice-intro")]')
+                spaced_into = True
+                break
+            except NoSuchElementException:
+                pass
+
+            # answer question
+            try:
+                try:
+                    self.student.find(
+                        By.XPATH, '//textarea').send_keys("test")
+                    self.student.sleep(0.5)
+                    self.student.find(
+                        By.XPATH, '//button[text()="Answer"]'
+                    ).click()
+                except NoSuchElementException:
+                    pass
+                self.student.sleep(0.5)
+                self.student.find(
+                    By.XPATH, '//div[@class="answer-letter"]'
+                ).click()
+                self.student.find(
+                    By.XPATH, '//button[text()="Submit"]'
+                ).click()
+                self.student.sleep(0.5)
+                self.student.find(
+                    By.XPATH, '//button[text()="Continue"]'
+                ).click()
+
+            except NoSuchElementException:
+                continue
+
+        assert(spaced_into, "Spaced practice intro not found")
         self.ps.test_updates['passed'] = True
 
     # C100126 - 004 - Student | Section number is seen at the beginning of each
@@ -236,7 +279,11 @@ class TestSimplifyAndImproveReadings(unittest.TestCase):
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        raise NotImplementedError(inspect.currentframe().f_code.co_name)
+        self.create_a_reading_and_click_on_it()
+        self.student.find(By.XPATH, '//a[@class="milestones-toggle"]').click()
+        self.student.find(
+            By.XPATH, '//div[contains(@class,"milestone-reading")]'
+        )
 
         self.ps.test_updates['passed'] = True
 
