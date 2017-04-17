@@ -27,7 +27,7 @@ LOCAL_RUN = os.getenv('LOCALRUN', 'false').lower() == 'true'
 TESTS = os.getenv(
     'CASELIST',
     str([
-        100127
+        14745
         # 14745, 14746, 85291, 100126, 100127,
         # 100128
     ])
@@ -309,7 +309,7 @@ class TestSimplifyAndImproveReadings(unittest.TestCase):
             By.XPATH, '//div[@data-title="College Physics with Courseware"]'
         ).click()
         book = self.student.find(
-            By.XPATH, '//a[text()="Browse the Book"]')
+            By.XPATH, '//div[text()="Browse the Book"]')
         Assignment.scroll_to(self.student.driver, book)
         book.click()
         window_with_book = self.student.driver.window_handles[1]
