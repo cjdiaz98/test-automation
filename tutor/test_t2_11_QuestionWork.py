@@ -12,9 +12,9 @@ import unittest
 from pastasauce import PastaSauce, PastaDecorator
 # from random import randint
 from selenium.webdriver.common.by import By
-# from selenium.webdriver.support import expected_conditions as expect
+from selenium.webdriver.support import expected_conditions as expect
 from selenium.webdriver import ActionChains
-# from staxing.assignment import Assignment
+from staxing.assignment import Assignment
 
 # select user types: Admin, ContentQA, Teacher, and/or Student
 from staxing.helper import Teacher, ContentQA, Student
@@ -30,16 +30,19 @@ LOCAL_RUN = os.getenv('LOCALRUN', 'false').lower() == 'true'
 TESTS = os.getenv(
     'CASELIST',
     str([
-        14695, 14696, 14691, 14692, 14693,
-        14694, 14699, 14700, 14702, 14718,
-        14715, 14717, 14710, 14711, 14712,
-        14723, 14722, 14705, 14704, 14703,
-        15903, 14719, 14714, 14716, 14709,
-        14713, 14721, 14720, 14707, 14706,
-        15902, 14724, 14725, 14735, 14799,
-        14727, 14734, 14728, 14729, 14798,
-        14730, 14731, 14732, 14736, 14737,
-        85293, 96968
+        14699
+        # 14695, 14696, 14691, 14692, 14693,
+        # 14694, 14699, 14700, 14702, 14718,
+        # 14715, 14717, 14710, 14711, 14712,
+        # 14723, 14722, 14705, 14704, 14703,
+        # 15903, 14719, 14714, 14716, 14709,
+        # 14713, 14721, 14720, 14707, 14706,
+        # 15902, 14724, 14725, 14735, 14799,
+        # 14727, 14734, 14728, 14729, 14798,
+        # 14730, 14731, 14732, 14736, 14737,
+        # 85293, 96968
+
+        # up to 14699 working,
     ])
 )
 
@@ -97,6 +100,14 @@ class TestQuestionWork(unittest.TestCase):
             self.teacher.delete()
         except:
             pass
+        try:
+            self.content.delete()
+        except:
+            pass
+        try:
+            self.student.delete()
+        except:
+            pass
 
     # 14695 - 001 - Teacher | Review all questions
     @pytest.mark.skipif(str(14695) not in TESTS, reason='Excluded')
@@ -118,36 +129,21 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.001' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.001',
-            '14695'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.001', '14695']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
         self.teacher.login()
-        self.teacher.select_course(appearance='physics')
-        self.teacher.sleep(5)
-
+        self.teacher.select_course(appearance='college_physics')
         self.teacher.open_user_menu()
-        self.teacher.find(By.PARTIAL_LINK_TEXT, 'Question Library').click()
-        self.teacher.sleep(5)
+        self.teacher.find(By.XPATH, '//div[text()="Question Library"]').click()
+        self.teacher.sleep(1)
 
         # Open the assessment cards
+        Assignment().select_sections(self.teacher.driver, ['1.1', '1.2'])
         self.teacher.find(
-            By.XPATH,
-            "//span[@class='chapter-checkbox']/span[@class='tri-state-check" +
-            "box unchecked']/i[@class='tutor-icon fa fa-square-o']").click()
-        self.teacher.find(
-            By.XPATH, "//button[@class='btn btn-primary']").click()
-        self.teacher.sleep(5)
-        self.teacher.find(
-            By.XPATH,
-            "//div[@class='openstax-exercise-preview exercise-card has-acti" +
-            "ons non-interactive is-vertically-truncated panel panel-defau" +
-            "lt']/div[@class='panel-body']")
+            By.XPATH, '//button[text()="Show Questions"]').click()
+        self.teacher.find(By.XPATH, '//div[@class="exercise-body"]')
 
         self.ps.test_updates['passed'] = True
 
@@ -168,43 +164,35 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.002' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.002',
-            '14696'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.002', '14696']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
         self.teacher.login()
-        self.teacher.select_course(appearance='physics')
-        self.teacher.sleep(5)
-
+        self.teacher.select_course(appearance='college_physics')
         self.teacher.open_user_menu()
-        self.teacher.find(By.PARTIAL_LINK_TEXT, 'Question Library').click()
-        self.teacher.sleep(5)
+        self.teacher.find(By.XPATH, '//div[text()="Question Library"]').click()
+        self.teacher.sleep(1)
 
         # Open the assessment cards
+        Assignment().select_sections(self.teacher.driver, ['1.1', '1.2'])
         self.teacher.find(
-            By.XPATH,
-            "//span[@class='chapter-checkbox']/span[@class='tri-state-check" +
-            "box unchecked']/i[@class='tutor-icon fa fa-square-o']").click()
-        self.teacher.find(
-            By.XPATH, "//button[@class='btn btn-primary']").click()
-        self.teacher.sleep(5)
-
-        # Click the exclude question button, then click include question button
-        element = self.teacher.find(
-            By.XPATH, "//div[@class = 'controls-overlay'][1]")
+            By.XPATH, '//button[text()="Show Questions"]').click()
+        element = self.teacher.find(By.XPATH, '//div[@data-exercise-id]')
+        card_id = element.get_attribute("data-exercise-id")
         actions = ActionChains(self.teacher.driver)
         actions.move_to_element(element)
+        for _ in range(60):
+            actions.move_by_offset(-1, 0)
+        actions.click()
         actions.perform()
-        self.teacher.sleep(2)
-        self.teacher.find(By.XPATH, "//div[@class = 'action exclude']").click()
-        self.teacher.sleep(2)
-        self.teacher.find(By.XPATH, "//div[@class = 'action include']").click()
-        self.teacher.sleep(2)
+
+        self.teacher.sleep(1)
+        self.teacher.find(
+            By.XPATH,
+            '//div[contains(@class,"openstax-exercise") and ' +
+            'contains(@class,"is-selected") and ' +
+            '@data-exercise-id="%s"]' % card_id)
 
         self.ps.test_updates['passed'] = True
 
@@ -225,52 +213,30 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.003' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.003',
-            '14691'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.003', '14691']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
         self.teacher.login()
-        self.teacher.select_course(appearance='physics')
-        self.teacher.sleep(5)
-
+        self.teacher.select_course(appearance='college_physics')
         self.teacher.open_user_menu()
-        self.teacher.find(By.PARTIAL_LINK_TEXT, 'Question Library').click()
-        self.teacher.sleep(5)
+        self.teacher.find(By.XPATH, '//div[text()="Question Library"]').click()
+        self.teacher.sleep(1)
 
         # Open the assessment cards
+        # Open the assessment cards
+        Assignment().select_sections(self.teacher.driver, ['1.1', '1.2'])
         self.teacher.find(
-            By.XPATH,
-            "//span[@class='chapter-checkbox']/span[@class='tri-state-check" +
-            "box unchecked']/i[@class='tutor-icon fa fa-square-o']").click()
-        self.teacher.find(
-            By.XPATH, "//button[@class='btn btn-primary']").click()
-        self.teacher.sleep(5)
+            By.XPATH, '//button[text()="Show Questions"]').click()
+        elements_start = len(self.teacher.find_all(
+            By.XPATH, '//div[@data-exercise-id]'))
+        self.teacher.find(By.XPATH, '//button[text()="Reading"]').click()
+        self.teacher.sleep(0.5)
+        elements_end = len(self.teacher.find_all(
+            By.XPATH, '//div[@data-exercise-id]'))
 
-        # Count the total number of cards
-        total = len(self.teacher.driver.find_elements_by_xpath(
-            "//div[@class='openstax-exercise-preview exercise-card has-acti" +
-            "ons non-interactive is-vertically-truncated panel panel-defaul" +
-            "t']/div[@class='panel-body']"))
-        self.teacher.sleep(2)
-
-        # Limit assessments to reading, count the total number of cards
-        self.teacher.find(
-            By.XPATH, "//button[@class='reading btn btn-default']").click()
-        self.teacher.sleep(1)
-        reading = len(self.teacher.driver.find_elements_by_xpath(
-            "//div[@class='openstax-exercise-preview exercise-card has-ac" +
-            "tions non-interactive is-vertically-truncated panel panel-de" +
-            "fault']/div[@class='panel-body']"))
-        self.teacher.sleep(2)
-
-        # Reading assessments should not outnumber total assessments
-        assert(total >= reading), \
-            'More reading assessments than total assessments'
+        assert(elements_start > elements_end), \
+               "Questions not filtered to readings"
 
         self.ps.test_updates['passed'] = True
 
@@ -291,52 +257,30 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.004' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.004',
-            '14692'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.004', '14692']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
         self.teacher.login()
-        self.teacher.select_course(appearance='physics')
-        self.teacher.sleep(5)
-
+        self.teacher.select_course(appearance='college_physics')
         self.teacher.open_user_menu()
-        self.teacher.find(By.PARTIAL_LINK_TEXT, 'Question Library').click()
-        self.teacher.sleep(5)
+        self.teacher.find(By.XPATH, '//div[text()="Question Library"]').click()
+        self.teacher.sleep(1)
 
         # Open the assessment cards
+        # Open the assessment cards
+        Assignment().select_sections(self.teacher.driver, ['1.1', '1.2'])
         self.teacher.find(
-            By.XPATH,
-            "//span[@class='chapter-checkbox']/span[@class='tri-state-check" +
-            "box unchecked']/i[@class='tutor-icon fa fa-square-o']").click()
-        self.teacher.find(
-            By.XPATH, "//button[@class='btn btn-primary']").click()
-        self.teacher.sleep(5)
+            By.XPATH, '//button[text()="Show Questions"]').click()
+        elements_start = len(self.teacher.find_all(
+            By.XPATH, '//div[@data-exercise-id]'))
+        self.teacher.find(By.XPATH, '//button[text()="Homework"]').click()
+        self.teacher.sleep(0.5)
+        elements_end = len(self.teacher.find_all(
+            By.XPATH, '//div[@data-exercise-id]'))
 
-        # Count the total number of cards
-        total = len(self.teacher.driver.find_elements_by_xpath(
-            "//div[@class='openstax-exercise-preview exercise-card has-act" +
-            "ions non-interactive is-vertically-truncated panel panel-defa" +
-            "ult']/div[@class='panel-body']"))
-        self.teacher.sleep(2)
-
-        # Limit assessments to practice, count the total number of cards
-        self.teacher.find(
-            By.XPATH, "//button[@class='homework btn btn-default']").click()
-        self.teacher.sleep(1)
-        practice = len(self.teacher.driver.find_elements_by_xpath(
-            "//div[@class='openstax-exercise-preview exercise-card has-act" +
-            "ions non-interactive is-vertically-truncated panel panel-defa" +
-            "ult']/div[@class='panel-body']"))
-        self.teacher.sleep(2)
-
-        # Practice assessments should not outnumber total assessments
-        assert(total >= practice), \
-            'More practice assessments than total assessments'
+        assert(elements_start > elements_end), \
+               "Questions not filtered to readings"
 
         self.ps.test_updates['passed'] = True
 
@@ -357,44 +301,32 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.005' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.005',
-            '14693'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.005', '14693']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
         self.teacher.login()
-        self.teacher.select_course(appearance='physics')
-        self.teacher.sleep(5)
-
+        self.teacher.select_course(appearance='college_physics')
         self.teacher.open_user_menu()
-        self.teacher.find(By.PARTIAL_LINK_TEXT, 'Question Library').click()
-        self.teacher.sleep(5)
+        self.teacher.find(By.XPATH, '//div[text()="Question Library"]').click()
+        self.teacher.sleep(1)
 
         # Open the assessment cards
+        Assignment().select_sections(self.teacher.driver, ['1.1', '1.2'])
         self.teacher.find(
-            By.XPATH,
-            "//span[@class='chapter-checkbox']/span[@class='tri-state-check" +
-            "box unchecked']/i[@class='tutor-icon fa fa-square-o']").click()
-        self.teacher.find(
-            By.XPATH, "//button[@class='btn btn-primary']").click()
-        self.teacher.sleep(10)
+            By.XPATH, '//button[text()="Show Questions"]').click()
 
         # Scroll to bottom of page and verify that the tabs are still visible
-        self.teacher.driver.execute_script("window.scrollTo(0, 0);")
         self.teacher.driver.execute_script(
             "window.scrollTo(0, document.body.scrollHeight);")
-        self.teacher.sleep(3)
-        self.teacher.find(By.XPATH, "//div[@class='section active']")
-        self.teacher.find(
-            By.XPATH, "//button[@class='homework btn btn-default']")
-        self.teacher.find(
-            By.XPATH, "//button[@class='reading btn btn-default']")
-        self.teacher.sleep(3)
-
+        self.teacher.sleep(1)
+        self.teacher.wait.until(
+            expect.visibility_of_element_located(
+                (By.XPATH,
+                 '//div[@class="pinned-container" and ' +
+                 'contains(@style, "110px")]')
+            )
+        )
         self.ps.test_updates['passed'] = True
 
     # 14694 - 006 - Teacher | Make section links jumpable
@@ -414,57 +346,38 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.006' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.006',
-            '14694'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.006', '14694']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
         self.teacher.login()
-        self.teacher.select_course(appearance='physics')
-        self.teacher.sleep(5)
-
+        self.teacher.select_course(appearance='college_physics')
         self.teacher.open_user_menu()
-        self.teacher.find(By.PARTIAL_LINK_TEXT, 'Question Library').click()
-        self.teacher.sleep(5)
+        self.teacher.find(By.XPATH, '//div[text()="Question Library"]').click()
+        self.teacher.sleep(1)
 
         # Open the assessment cards
+        Assignment().select_sections(self.teacher.driver, ['1.1', '1.2'])
+        self.teacher.find(
+            By.XPATH, '//button[text()="Show Questions"]').click()
+
+        self.teacher.wait.until(
+            expect.visibility_of_element_located(
+                (By.XPATH,
+                 '//div[@class="sectionizer"]//div[@class="section active" ' +
+                 'and text()="1.1"]')
+            )
+        )
+        self.teacher.find(
+            By.XPATH, '//div[@class="sectionizer"]//div[@class="section"]'
+        ).click()
+        self.teacher.sleep(1)
         self.teacher.find(
             By.XPATH,
-            "//span[@class='chapter-checkbox']/span[@class='tri-" +
-            "state-checkbox unchecked']/i[@class='tutor-icon fa fa-square-o']"
-        ).click()
-        self.teacher.find(
-            By.XPATH, "//button[@class='btn btn-primary']").click()
-        self.teacher.sleep(10)
+            '//div[@class="sectionizer"]//div[@class="section active" and ' +
+            'text()="1.2"]'
+        )
 
-        sections = self.teacher.driver.find_elements_by_xpath(
-            "//div[@class='exercise-sections']/label[@class='exercises-secti" +
-            "on-label']/span[3]")
-        sections.pop(0)
-
-        jumps = self.teacher.driver.find_elements_by_xpath(
-            "//div[@class='sectionizer']/div[@class='section']")
-
-        assert(len(sections) == len(jumps)), \
-            'Number of section jumps does not equal number of section titles'
-
-        # Click the section links and verify the page is scrolled
-        position = self.teacher.driver.execute_script("return window.scrollY;")
-        for button in jumps:
-            button.click()
-            self.teacher.sleep(2)
-            assert(position < self.teacher.driver.execute_script(
-                "return window.scrollY;")), \
-                'Section link did not jump to next section'
-
-            position = self.teacher.driver.execute_script(
-                "return window.scrollY;")
-
-        self.teacher.sleep(3)
 
         self.ps.test_updates['passed'] = True
 
@@ -487,49 +400,35 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.007' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.007',
-            '14699'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.007', '14699']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
         self.teacher.login()
-        self.teacher.select_course(appearance='physics')
-        self.teacher.sleep(5)
-
+        self.teacher.select_course(appearance='college_physics')
         self.teacher.open_user_menu()
-        self.teacher.find(By.PARTIAL_LINK_TEXT, 'Question Library').click()
-        self.teacher.sleep(5)
+        self.teacher.find(By.XPATH, '//div[text()="Question Library"]').click()
+        self.teacher.sleep(1)
 
         # Open the assessment cards
+        Assignment().select_sections(self.teacher.driver, ['1.1', '1.2'])
         self.teacher.find(
-            By.XPATH,
-            "//span[@class='chapter-checkbox']/span[@class='tri-state-check" +
-            "box unchecked']/i[@class='tutor-icon fa fa-square-o']").click()
-        self.teacher.find(
-            By.XPATH, "//button[@class='btn btn-primary']").click()
-        self.teacher.sleep(5)
-
-        # Click the question detail button, then click report an error button
-        element = self.teacher.find(
-            By.XPATH, "//div[@class = 'controls-overlay'][1]")
+            By.XPATH, '//button[text()="Show Questions"]').click()
+        element = self.teacher.find(By.XPATH, '//div[@data-exercise-id]')
         actions = ActionChains(self.teacher.driver)
         actions.move_to_element(element)
+        for _ in range(60):
+            actions.move_by_offset(1, 0)
+        actions.click()
         actions.perform()
-        self.teacher.sleep(2)
-        self.teacher.find(By.XPATH, "//div[@class='action details']").click()
-        self.teacher.sleep(2)
-        self.teacher.find(
-            By.XPATH, "//div[@class='action report-error']").click()
-        self.teacher.sleep(3)
-        self.teacher.driver.switch_to_window(
-            self.teacher.driver.window_handles[-1])
 
-        assert('docs.google' in self.teacher.current_url()), \
-            'Not viewing the errata page'
+        self.teacher.sleep(1)
+        self.teacher.find(
+            By.XPATH, '//div[@class="action report-error"]').click()
+        window_with_form = self.teacher.driver.window_handles[1]
+        self.teacher.driver.switch_to_window(window_with_form)
+        assert('errata' in self.teacher.current_url()), \
+            'Not viewing assessment errata form'
 
         self.ps.test_updates['passed'] = True
 
@@ -550,18 +449,12 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.008' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.008',
-            '14700'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.008', '14700']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
         self.student.login()
-        self.student.select_course(appearance='physics')
-        self.student.sleep(5)
+        self.student.select_course(appearance='college_physics')
 
         # Find a homework from past work
         self.student.find(
@@ -604,12 +497,7 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.009' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.009',
-            '14702'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.009', '14702']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
@@ -640,58 +528,45 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.010' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.010',
-            '14718'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.010', '14718']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.content.login()
-        self.content.sleep(2)
-        self.content.driver.get("https://exercises-qa.openstax.org/")
-        self.content.sleep(2)
-        self.content.find(By.PARTIAL_LINK_TEXT, "SIGN IN").click()
-        self.content.sleep(2)
-        self.content.find(By.PARTIAL_LINK_TEXT, "WRITE A NEW EXERCISE").click()
-        self.content.sleep(5)
+        self.content.login(url="https://exercises-qa.openstax.org/")
+        self.content.find(By.XPATH, '//span[text()="WRITE A NEW EXERCISE"]').click()
+        self.content.page.wait_for_page_load()
 
-        # Select Multiple Choice radio if not already selected
-        if not self.content.find(
-            By.XPATH, "//div[@class='form-group'][1]/div[@class='radio']"
-        ).is_selected():
-            self.content.find(
-                By.XPATH,
-                "//div[@class='form-group'][1]/div[@class='radio']" +
-                "/label/span").click()
-
-        self.content.sleep(3)
+        # Select Multiple Choice radio
+        self.content.find(By.ID, 'input-multiple-choice').click()
 
         # Fill in required fields
-        self.content.find(By.XPATH, "//div[4]/textarea").send_keys('Stem')
+        self.content.find(
+            By.XPATH, '//label[text()="Question Stem"]/../textarea'
+        ).send_keys('Question Stem')
         self.content.find(
             By.XPATH,
-            "//li[@class='correct-answer']/textarea[1]").send_keys(
-            'Distractor')
+            "//li[@class='correct-answer']/textarea[1]"
+        ).send_keys('Distractor')
         self.content.find(
             By.XPATH,
-            "//li[@class='correct-answer']/textarea[2]").send_keys('Feedback')
-        self.content.find(By.XPATH, "//div[6]/textarea").send_keys('Solution')
+            "//li[@class='correct-answer']/textarea[2]"
+        ).send_keys('Feedback')
+        self.content.find(
+            By.XPATH, '//label[text()="Detailed Solution"]/../textarea'
+        ).send_keys('Solution')
 
         # Save draft and publish
         self.content.find(
             By.XPATH,
-            "//button[@class='async-button draft btn btn-info']").click()
-        self.content.sleep(3)
+            "//button[contains(@class,'draft')]").click()
+        self.content.sleep(1)
         self.content.find(
             By.XPATH,
-            "//button[@class='async-button publish btn btn-primary']").click()
+            "//button[contains(@class,'publish')]").click()
         self.content.find(
             By.XPATH,
-            "//div[@class='popover-content']/div[@class='controls']/button" +
-            "[@class='btn btn-primary']").click()
+            "//div[@class='popover-content']" +
+            "//button[text()='Publish']").click()
         self.content.sleep(3)
 
         # Verify
@@ -721,12 +596,7 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.011' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.011',
-            '14715'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.011', '14715']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
@@ -768,12 +638,7 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.012' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.012',
-            '14717'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.012', '14717']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
@@ -854,12 +719,7 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.013' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.013',
-            '14710'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.013', '14710']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
@@ -944,12 +804,7 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.014' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.014',
-            '14711'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.014', '14711']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
@@ -997,12 +852,7 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.015' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.015',
-            '14712'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.015', '14712']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
@@ -1049,12 +899,7 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.016' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.016',
-            '14723'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.016', '14723']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
@@ -1096,12 +941,7 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.017' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.017',
-            '14722'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.017', '14722']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
@@ -1145,12 +985,7 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.018' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.018',
-            '14705'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.018', '14705']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
@@ -1228,12 +1063,7 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.019' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.019',
-            '14704'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.019', '14704']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
@@ -1315,12 +1145,7 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.020' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.020',
-            '14703'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.020', '14703']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
@@ -1404,12 +1229,7 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.021' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.021',
-            '15903'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.021', '15903']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
@@ -1499,12 +1319,7 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.022' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.022',
-            '14719'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.022', '14719']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
@@ -1581,12 +1396,7 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.023' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.023',
-            '14714'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.023', '14714']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
@@ -1628,12 +1438,7 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.024' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.024',
-            '14716'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.024', '14716']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
@@ -1718,12 +1523,7 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.025' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.025',
-            '14709'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.025', '14709']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
@@ -1810,12 +1610,7 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.026' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.026',
-            '14713'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.026', '14713']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
@@ -1862,12 +1657,7 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.027' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.027',
-            '14721'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.027', '14721']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
@@ -1909,12 +1699,7 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.028' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.028',
-            '14720'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.028', '14720']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
@@ -1958,12 +1743,7 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.029' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.029',
-            '14707'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.029', '14707']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
@@ -2041,12 +1821,7 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.030' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.030',
-            '14706'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.030', '14706']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
@@ -2129,12 +1904,7 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.031' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.031',
-            '15902'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.031', '15902']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
@@ -2220,12 +1990,7 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.032' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.032',
-            '14724'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.032', '14724']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
@@ -2293,12 +2058,7 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.033' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.033',
-            '14725'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.033', '14725']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
@@ -2399,12 +2159,7 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.034' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.034',
-            '14735'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.034', '14735']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
@@ -2456,12 +2211,7 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.035' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.035',
-            '14799'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.035', '14799']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
@@ -2529,12 +2279,7 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.036' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.036',
-            '14727'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.036', '14727']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
@@ -2635,12 +2380,7 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.037' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.037',
-            '14734'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.037', '14734']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
@@ -2692,12 +2432,7 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.038' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.038',
-            '14728'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.038', '14728']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
@@ -2737,12 +2472,7 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.039' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.039',
-            '14729'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.039', '14729']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
@@ -2788,12 +2518,7 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.040' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.040',
-            '14798'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.040', '14798']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
@@ -2839,12 +2564,7 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.041' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.041',
-            '14730'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.041', '14730']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
@@ -2876,12 +2596,7 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.042' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.042',
-            '14731'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.042', '14731']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
@@ -2923,7 +2638,7 @@ class TestQuestionWork(unittest.TestCase):
 
         # Login as teacher and go to question library
         self.teacher.login()
-        self.teacher.select_course(appearance='physics')
+        self.teacher.select_course(appearance='college_physics')
         self.teacher.sleep(5)
 
         self.teacher.open_user_menu()
@@ -2989,12 +2704,7 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.043' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.043',
-            '14732'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.043', '14732']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
@@ -3057,12 +2767,7 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.044' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.044',
-            '14736'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.044', '14736']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
@@ -3167,12 +2872,7 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.045' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.045',
-            '14737'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.045', '14737']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
@@ -3278,12 +2978,7 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.046' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.046',
-            '85293'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.046', '85293']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
@@ -3357,12 +3052,7 @@ class TestQuestionWork(unittest.TestCase):
         """
         self.ps.test_updates['name'] = 't2.11.047' \
             + inspect.currentframe().f_code.co_name[4:]
-        self.ps.test_updates['tags'] = [
-            't2',
-            't2.11',
-            't2.11.047',
-            '96968'
-        ]
+        self.ps.test_updates['tags'] = ['t2', 't2.11', 't2.11.047', '96968']
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
