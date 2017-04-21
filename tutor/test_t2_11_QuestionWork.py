@@ -30,7 +30,7 @@ LOCAL_RUN = os.getenv('LOCALRUN', 'false').lower() == 'true'
 TESTS = os.getenv(
     'CASELIST',
     str([
-        14699
+        14718
         # 14695, 14696, 14691, 14692, 14693,
         # 14694, 14699, 14700, 14702, 14718,
         # 14715, 14717, 14710, 14711, 14712,
@@ -532,8 +532,10 @@ class TestQuestionWork(unittest.TestCase):
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
+        self.content.sleep(2)
         self.content.login(url="https://exercises-qa.openstax.org/")
-        self.content.find(By.XPATH, '//span[text()="WRITE A NEW EXERCISE"]').click()
+        self.content.find(
+            By.XPATH, '//span[text()="WRITE A NEW EXERCISE"]').click()
         self.content.page.wait_for_page_load()
 
         # Select Multiple Choice radio
@@ -600,25 +602,17 @@ class TestQuestionWork(unittest.TestCase):
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.content.login()
-        self.content.sleep(2)
-        self.content.driver.get("https://exercises-qa.openstax.org/")
-        self.content.sleep(2)
-        self.content.find(By.PARTIAL_LINK_TEXT, "SIGN IN").click()
-        self.content.sleep(2)
-        self.content.find(By.PARTIAL_LINK_TEXT, "WRITE A NEW EXERCISE").click()
-        self.content.sleep(5)
+        self.content.login(url="https://exercises-qa.openstax.org/")
+        self.content.find(
+            By.XPATH, '//span[text()="WRITE A NEW EXERCISE"]').click()
+        self.content.page.wait_for_page_load()
 
         # Select the Order Matters checkbox
-        checkbox = self.content.find(
-            By.XPATH,
-            "//div[@class='question']/div[@class='form-group']/div[@class" +
-            "='checkbox']/label/span")
+        checkbox = self.content.find(By.ID, "input-om")
         checkbox.click()
-        self.content.sleep(5)
+        assert(checkbox.is_selected()), "Order matters checkbox not selected"
 
-        if checkbox.is_selected():
-            self.ps.test_updates['passed'] = True
+        self.ps.test_updates['passed'] = True
 
     # 14717 - 012 - Content Analyst | Edit detailed solutions
     @pytest.mark.skipif(str(14717) not in TESTS, reason='Excluded')
@@ -642,57 +636,46 @@ class TestQuestionWork(unittest.TestCase):
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.content.login()
-        self.content.sleep(2)
-        self.content.driver.get("https://exercises-qa.openstax.org/")
-        self.content.sleep(2)
-        self.content.find(By.PARTIAL_LINK_TEXT, "SIGN IN").click()
-        self.content.sleep(2)
-        self.content.find(By.PARTIAL_LINK_TEXT, "WRITE A NEW EXERCISE").click()
-        self.content.sleep(5)
+        self.content.login(url="https://exercises-qa.openstax.org/")
+        self.content.find(
+            By.XPATH, '//span[text()="WRITE A NEW EXERCISE"]').click()
+        self.content.page.wait_for_page_load()
 
         # Select Multiple Choice radio if not already selected
-        if not self.content.find(
-            By.XPATH,
-            "//div[@class='form-group'][1]/div[@class='radio']"
-        ).is_selected():
-            self.content.find(
-                By.XPATH,
-                "//div[@class='form-group'][1]/div[@class='radio']/label/span"
-            ).click()
-
-        self.content.sleep(3)
+        # Select Multiple Choice radio
+        self.content.find(By.ID, 'input-multiple-choice').click()
 
         # Fill in required fields
-        self.content.find(By.XPATH, "//div[4]/textarea").send_keys('Stem')
+        self.content.find(
+            By.XPATH, '//label[text()="Question Stem"]/../textarea'
+        ).send_keys('Question Stem')
         self.content.find(
             By.XPATH,
-            "//li[@class='correct-answer']/textarea[1]").send_keys(
-            'Distractor')
+            "//li[@class='correct-answer']/textarea[1]"
+        ).send_keys('Distractor')
         self.content.find(
             By.XPATH,
-            "//li[@class='correct-answer']/textarea[2]").send_keys('Feedback')
-        self.content.find(By.XPATH, "//div[6]/textarea").send_keys('Solution')
+            "//li[@class='correct-answer']/textarea[2]"
+        ).send_keys('Feedback')
+        self.content.find(
+            By.XPATH, '//label[text()="Detailed Solution"]/../textarea'
+        ).send_keys('Solution')
 
         # Save draft and publish
         self.content.find(
             By.XPATH,
-            "//button[@class='async-button draft btn btn-info']").click()
-        self.content.sleep(3)
+            "//button[contains(@class,'draft')]").click()
+        self.content.sleep(1)
         self.content.find(
             By.XPATH,
-            "//button[@class='async-button publish btn btn-primary']").click()
+            "//button[contains(@class,'publish')]").click()
         self.content.find(
             By.XPATH,
-            "//div[@class='popover-content']/div[@class='controls']/butt" +
-            "on[@class='btn btn-primary']").click()
+            "//div[@class='popover-content']" +
+            "//button[text()='Publish']").click()
         self.content.sleep(3)
 
-        # Verify
-        page = self.content.driver.page_source
-        assert('has published successfully' in page), \
-            'Exercise not successfully published'
-
+        # edit detailed solution
         self.content.find(
             By.XPATH, "//button[@class='btn btn-primary']").click()
 
@@ -723,14 +706,10 @@ class TestQuestionWork(unittest.TestCase):
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.content.login()
-        self.content.sleep(2)
-        self.content.driver.get("https://exercises-qa.openstax.org/")
-        self.content.sleep(2)
-        self.content.find(By.PARTIAL_LINK_TEXT, "SIGN IN").click()
-        self.content.sleep(2)
-        self.content.find(By.PARTIAL_LINK_TEXT, "WRITE A NEW EXERCISE").click()
-        self.content.sleep(5)
+        self.content.login(url="https://exercises-qa.openstax.org/")
+        self.content.find(
+            By.XPATH, '//span[text()="WRITE A NEW EXERCISE"]').click()
+        self.content.page.wait_for_page_load()
 
         # Select Multiple Choice radio if not already selected
         if not self.content.find(
@@ -808,14 +787,10 @@ class TestQuestionWork(unittest.TestCase):
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.content.login()
-        self.content.sleep(2)
-        self.content.driver.get("https://exercises-qa.openstax.org/")
-        self.content.sleep(2)
-        self.content.find(By.PARTIAL_LINK_TEXT, "SIGN IN").click()
-        self.content.sleep(2)
-        self.content.find(By.PARTIAL_LINK_TEXT, "WRITE A NEW EXERCISE").click()
-        self.content.sleep(5)
+        self.content.login(url="https://exercises-qa.openstax.org/")
+        self.content.find(
+            By.XPATH, '//span[text()="WRITE A NEW EXERCISE"]').click()
+        self.content.page.wait_for_page_load()
 
         # Switch to Tags tab and find the dropdown elements
         self.content.find(
@@ -856,14 +831,10 @@ class TestQuestionWork(unittest.TestCase):
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.content.login()
-        self.content.sleep(2)
-        self.content.driver.get("https://exercises-qa.openstax.org/")
-        self.content.sleep(2)
-        self.content.find(By.PARTIAL_LINK_TEXT, "SIGN IN").click()
-        self.content.sleep(2)
-        self.content.find(By.PARTIAL_LINK_TEXT, "WRITE A NEW EXERCISE").click()
-        self.content.sleep(5)
+        self.content.login(url="https://exercises-qa.openstax.org/")
+        self.content.find(
+            By.XPATH, '//span[text()="WRITE A NEW EXERCISE"]').click()
+        self.content.page.wait_for_page_load()
 
         # Switch to Tags tab and find the dropdown elements
         self.content.find(
@@ -903,14 +874,10 @@ class TestQuestionWork(unittest.TestCase):
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.content.login()
-        self.content.sleep(2)
-        self.content.driver.get("https://exercises-qa.openstax.org/")
-        self.content.sleep(2)
-        self.content.find(By.PARTIAL_LINK_TEXT, "SIGN IN").click()
-        self.content.sleep(2)
-        self.content.find(By.PARTIAL_LINK_TEXT, "WRITE A NEW EXERCISE").click()
-        self.content.sleep(5)
+        self.content.login(url="https://exercises-qa.openstax.org/")
+        self.content.find(
+            By.XPATH, '//span[text()="WRITE A NEW EXERCISE"]').click()
+        self.content.page.wait_for_page_load()
 
         # Switch to Tags tab and check Requires Context
         self.content.find(
@@ -945,14 +912,10 @@ class TestQuestionWork(unittest.TestCase):
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.content.login()
-        self.content.sleep(2)
-        self.content.driver.get("https://exercises-qa.openstax.org/")
-        self.content.sleep(2)
-        self.content.find(By.PARTIAL_LINK_TEXT, "SIGN IN").click()
-        self.content.sleep(2)
-        self.content.find(By.PARTIAL_LINK_TEXT, "WRITE A NEW EXERCISE").click()
-        self.content.sleep(5)
+        self.content.login(url="https://exercises-qa.openstax.org/")
+        self.content.find(
+            By.XPATH, '//span[text()="WRITE A NEW EXERCISE"]').click()
+        self.content.page.wait_for_page_load()
 
         # Switch to Tags tab and click CNX Module
         self.content.find(
@@ -989,14 +952,10 @@ class TestQuestionWork(unittest.TestCase):
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.content.login()
-        self.content.sleep(2)
-        self.content.driver.get("https://exercises-qa.openstax.org/")
-        self.content.sleep(2)
-        self.content.find(By.PARTIAL_LINK_TEXT, "SIGN IN").click()
-        self.content.sleep(2)
-        self.content.find(By.PARTIAL_LINK_TEXT, "WRITE A NEW EXERCISE").click()
-        self.content.sleep(5)
+        self.content.login(url="https://exercises-qa.openstax.org/")
+        self.content.find(
+            By.XPATH, '//span[text()="WRITE A NEW EXERCISE"]').click()
+        self.content.page.wait_for_page_load()
 
         # Select Multiple Choice radio if not already selected
         if not self.content.find(
@@ -1067,14 +1026,10 @@ class TestQuestionWork(unittest.TestCase):
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.content.login()
-        self.content.sleep(2)
-        self.content.driver.get("https://exercises-qa.openstax.org/")
-        self.content.sleep(2)
-        self.content.find(By.PARTIAL_LINK_TEXT, "SIGN IN").click()
-        self.content.sleep(2)
-        self.content.find(By.PARTIAL_LINK_TEXT, "WRITE A NEW EXERCISE").click()
-        self.content.sleep(5)
+        self.content.login(url="https://exercises-qa.openstax.org/")
+        self.content.find(
+            By.XPATH, '//span[text()="WRITE A NEW EXERCISE"]').click()
+        self.content.page.wait_for_page_load()
 
         # Select Multiple Choice radio if not already selected
         if not self.content.find(
@@ -1149,14 +1104,10 @@ class TestQuestionWork(unittest.TestCase):
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.content.login()
-        self.content.sleep(2)
-        self.content.driver.get("https://exercises-qa.openstax.org/")
-        self.content.sleep(2)
-        self.content.find(By.PARTIAL_LINK_TEXT, "SIGN IN").click()
-        self.content.sleep(2)
-        self.content.find(By.PARTIAL_LINK_TEXT, "WRITE A NEW EXERCISE").click()
-        self.content.sleep(5)
+        self.content.login(url="https://exercises-qa.openstax.org/")
+        self.content.find(
+            By.XPATH, '//span[text()="WRITE A NEW EXERCISE"]').click()
+        self.content.page.wait_for_page_load()
 
         # Select Multiple Choice radio if not already selected
         if not self.content.find(
@@ -1233,14 +1184,10 @@ class TestQuestionWork(unittest.TestCase):
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.content.login()
-        self.content.sleep(2)
-        self.content.driver.get("https://exercises-qa.openstax.org/")
-        self.content.sleep(2)
-        self.content.find(By.PARTIAL_LINK_TEXT, "SIGN IN").click()
-        self.content.sleep(2)
-        self.content.find(By.PARTIAL_LINK_TEXT, "WRITE A NEW EXERCISE").click()
-        self.content.sleep(5)
+        self.content.login(url="https://exercises-qa.openstax.org/")
+        self.content.find(
+            By.XPATH, '//span[text()="WRITE A NEW EXERCISE"]').click()
+        self.content.page.wait_for_page_load()
 
         # Select Multiple Choice radio if not already selected
         if not self.content.find(
@@ -1323,14 +1270,10 @@ class TestQuestionWork(unittest.TestCase):
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.teacher.login()
-        self.teacher.sleep(2)
-        self.teacher.driver.get("https://exercises-qa.openstax.org/")
-        self.teacher.sleep(2)
-        self.teacher.find(By.PARTIAL_LINK_TEXT, "SIGN IN").click()
-        self.teacher.sleep(2)
-        self.teacher.find(By.PARTIAL_LINK_TEXT, "WRITE A NEW EXERCISE").click()
-        self.teacher.sleep(5)
+        self.teacher.login(url="https://exercises-qa.openstax.org/")
+        self.teacher.find(
+            By.XPATH, '//span[text()="WRITE A NEW EXERCISE"]').click()
+        self.teacher.page.wait_for_page_load()
 
         # Select Multiple Choice radio if not already selected
         if not self.teacher.find(
@@ -1400,14 +1343,10 @@ class TestQuestionWork(unittest.TestCase):
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.teacher.login()
-        self.teacher.sleep(2)
-        self.teacher.driver.get("https://exercises-qa.openstax.org/")
-        self.teacher.sleep(2)
-        self.teacher.find(By.PARTIAL_LINK_TEXT, "SIGN IN").click()
-        self.teacher.sleep(2)
-        self.teacher.find(By.PARTIAL_LINK_TEXT, "WRITE A NEW EXERCISE").click()
-        self.teacher.sleep(5)
+        self.teacher.login(url="https://exercises-qa.openstax.org/")
+        self.teacher.find(
+            By.XPATH, '//span[text()="WRITE A NEW EXERCISE"]').click()
+        self.teacher.page.wait_for_page_load()
 
         # Select the Order Matters checkbox
         checkbox = self.teacher.find(
@@ -1442,14 +1381,10 @@ class TestQuestionWork(unittest.TestCase):
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.teacher.login()
-        self.teacher.sleep(2)
-        self.teacher.driver.get("https://exercises-qa.openstax.org/")
-        self.teacher.sleep(2)
-        self.teacher.find(By.PARTIAL_LINK_TEXT, "SIGN IN").click()
-        self.teacher.sleep(2)
-        self.teacher.find(By.PARTIAL_LINK_TEXT, "WRITE A NEW EXERCISE").click()
-        self.teacher.sleep(5)
+        self.teacher.login(url="https://exercises-qa.openstax.org/")
+        self.teacher.find(
+            By.XPATH, '//span[text()="WRITE A NEW EXERCISE"]').click()
+        self.teacher.page.wait_for_page_load()
 
         # Select Multiple Choice radio if not already selected
         if not self.teacher.find(
@@ -1527,14 +1462,10 @@ class TestQuestionWork(unittest.TestCase):
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.teacher.login()
-        self.teacher.sleep(2)
-        self.teacher.driver.get("https://exercises-qa.openstax.org/")
-        self.teacher.sleep(2)
-        self.teacher.find(By.PARTIAL_LINK_TEXT, "SIGN IN").click()
-        self.teacher.sleep(2)
-        self.teacher.find(By.PARTIAL_LINK_TEXT, "WRITE A NEW EXERCISE").click()
-        self.teacher.sleep(5)
+        self.teacher.login(url="https://exercises-qa.openstax.org/")
+        self.teacher.find(
+            By.XPATH, '//span[text()="WRITE A NEW EXERCISE"]').click()
+        self.teacher.page.wait_for_page_load()
 
         # Select Multiple Choice radio if not already selected
         if not self.teacher.find(
@@ -1614,14 +1545,10 @@ class TestQuestionWork(unittest.TestCase):
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.teacher.login()
-        self.teacher.sleep(2)
-        self.teacher.driver.get("https://exercises-qa.openstax.org/")
-        self.teacher.sleep(2)
-        self.teacher.find(By.PARTIAL_LINK_TEXT, "SIGN IN").click()
-        self.teacher.sleep(2)
-        self.teacher.find(By.PARTIAL_LINK_TEXT, "WRITE A NEW EXERCISE").click()
-        self.teacher.sleep(5)
+        self.teacher.login(url="https://exercises-qa.openstax.org/")
+        self.teacher.find(
+            By.XPATH, '//span[text()="WRITE A NEW EXERCISE"]').click()
+        self.teacher.page.wait_for_page_load()
 
         # Switch to Tags tab and find the dropdown elements
         self.teacher.find(
@@ -1661,14 +1588,10 @@ class TestQuestionWork(unittest.TestCase):
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.teacher.login()
-        self.teacher.sleep(2)
-        self.teacher.driver.get("https://exercises-qa.openstax.org/")
-        self.teacher.sleep(2)
-        self.teacher.find(By.PARTIAL_LINK_TEXT, "SIGN IN").click()
-        self.teacher.sleep(2)
-        self.teacher.find(By.PARTIAL_LINK_TEXT, "WRITE A NEW EXERCISE").click()
-        self.teacher.sleep(5)
+        self.teacher.login(url="https://exercises-qa.openstax.org/")
+        self.teacher.find(
+            By.XPATH, '//span[text()="WRITE A NEW EXERCISE"]').click()
+        self.teacher.page.wait_for_page_load()
 
         # Switch to Tags tab and check Requires Context
         self.teacher.find(
@@ -1703,14 +1626,10 @@ class TestQuestionWork(unittest.TestCase):
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.teacher.login()
-        self.teacher.sleep(2)
-        self.teacher.driver.get("https://exercises-qa.openstax.org/")
-        self.teacher.sleep(2)
-        self.teacher.find(By.PARTIAL_LINK_TEXT, "SIGN IN").click()
-        self.teacher.sleep(2)
-        self.teacher.find(By.PARTIAL_LINK_TEXT, "WRITE A NEW EXERCISE").click()
-        self.teacher.sleep(5)
+        self.teacher.login(url="https://exercises-qa.openstax.org/")
+        self.teacher.find(
+            By.XPATH, '//span[text()="WRITE A NEW EXERCISE"]').click()
+        self.teacher.page.wait_for_page_load()
 
         # Switch to Tags tab and click CNX Module
         self.teacher.find(
@@ -1747,14 +1666,10 @@ class TestQuestionWork(unittest.TestCase):
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.teacher.login()
-        self.teacher.sleep(2)
-        self.teacher.driver.get("https://exercises-qa.openstax.org/")
-        self.teacher.sleep(2)
-        self.teacher.find(By.PARTIAL_LINK_TEXT, "SIGN IN").click()
-        self.teacher.sleep(2)
-        self.teacher.find(By.PARTIAL_LINK_TEXT, "WRITE A NEW EXERCISE").click()
-        self.teacher.sleep(5)
+        self.teacher.login(url="https://exercises-qa.openstax.org/")
+        self.teacher.find(
+            By.XPATH, '//span[text()="WRITE A NEW EXERCISE"]').click()
+        self.teacher.page.wait_for_page_load()
 
         # Select Multiple Choice radio if not already selected
         if not self.teacher.find(
@@ -1825,14 +1740,10 @@ class TestQuestionWork(unittest.TestCase):
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.teacher.login()
-        self.teacher.sleep(2)
-        self.teacher.driver.get("https://exercises-qa.openstax.org/")
-        self.teacher.sleep(2)
-        self.teacher.find(By.PARTIAL_LINK_TEXT, "SIGN IN").click()
-        self.teacher.sleep(2)
-        self.teacher.find(By.PARTIAL_LINK_TEXT, "WRITE A NEW EXERCISE").click()
-        self.teacher.sleep(5)
+        self.teacher.login(url="https://exercises-qa.openstax.org/")
+        self.teacher.find(
+            By.XPATH, '//span[text()="WRITE A NEW EXERCISE"]').click()
+        self.teacher.page.wait_for_page_load()
 
         # Select Multiple Choice radio if not already selected
         if not self.teacher.find(
@@ -1908,14 +1819,10 @@ class TestQuestionWork(unittest.TestCase):
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.teacher.login()
-        self.teacher.sleep(2)
-        self.teacher.driver.get("https://exercises-qa.openstax.org/")
-        self.teacher.sleep(2)
-        self.teacher.find(By.PARTIAL_LINK_TEXT, "SIGN IN").click()
-        self.teacher.sleep(2)
-        self.teacher.find(By.PARTIAL_LINK_TEXT, "WRITE A NEW EXERCISE").click()
-        self.teacher.sleep(5)
+        self.teacher.login(url="https://exercises-qa.openstax.org/")
+        self.teacher.find(
+            By.XPATH, '//span[text()="WRITE A NEW EXERCISE"]').click()
+        self.teacher.page.wait_for_page_load()
 
         # Select Multiple Choice radio if not already selected
         if not self.teacher.find(
@@ -1994,14 +1901,10 @@ class TestQuestionWork(unittest.TestCase):
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.content.login()
-        self.content.sleep(2)
-        self.content.driver.get("https://exercises-qa.openstax.org/")
-        self.content.sleep(2)
-        self.content.find(By.PARTIAL_LINK_TEXT, "SIGN IN").click()
-        self.content.sleep(2)
-        self.content.find(By.PARTIAL_LINK_TEXT, "WRITE A NEW EXERCISE").click()
-        self.content.sleep(5)
+        self.content.login(url="https://exercises-qa.openstax.org/")
+        self.content.find(
+            By.XPATH, '//span[text()="WRITE A NEW EXERCISE"]').click()
+        self.content.page.wait_for_page_load()
 
         # Fill in required fields
         self.content.find(
@@ -2062,14 +1965,10 @@ class TestQuestionWork(unittest.TestCase):
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.content.login()
-        self.content.sleep(2)
-        self.content.driver.get("https://exercises-qa.openstax.org/")
-        self.content.sleep(2)
-        self.content.find(By.PARTIAL_LINK_TEXT, "SIGN IN").click()
-        self.content.sleep(2)
-        self.content.find(By.PARTIAL_LINK_TEXT, "WRITE A NEW EXERCISE").click()
-        self.content.sleep(5)
+        self.content.login(url="https://exercises-qa.openstax.org/")
+        self.content.find(
+            By.XPATH, '//span[text()="WRITE A NEW EXERCISE"]').click()
+        self.content.page.wait_for_page_load()
 
         # Fill in required fields
         self.content.find(
@@ -2163,14 +2062,10 @@ class TestQuestionWork(unittest.TestCase):
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.content.login()
-        self.content.sleep(2)
-        self.content.driver.get("https://exercises-qa.openstax.org/")
-        self.content.sleep(2)
-        self.content.find(By.PARTIAL_LINK_TEXT, "SIGN IN").click()
-        self.content.sleep(2)
-        self.content.driver.get("https://exercises-qa.openstax.org/search")
-        self.content.sleep(5)
+        self.content.login(url="https://exercises-qa.openstax.org/")
+        self.content.find(
+            By.XPATH, '//span[text()="WRITE A NEW EXERCISE"]').click()
+        self.content.page.wait_for_page_load()
 
         # Search for a vocabulary exercise
         self.content.sleep(3)
@@ -2215,14 +2110,10 @@ class TestQuestionWork(unittest.TestCase):
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.teacher.login()
-        self.teacher.sleep(2)
-        self.teacher.driver.get("https://exercises-qa.openstax.org/")
-        self.teacher.sleep(2)
-        self.teacher.find(By.PARTIAL_LINK_TEXT, "SIGN IN").click()
-        self.teacher.sleep(2)
-        self.teacher.find(By.PARTIAL_LINK_TEXT, "WRITE A NEW EXERCISE").click()
-        self.teacher.sleep(5)
+        self.teacher.login(url="https://exercises-qa.openstax.org/")
+        self.teacher.find(
+            By.XPATH, '//span[text()="WRITE A NEW EXERCISE"]').click()
+        self.teacher.page.wait_for_page_load()
 
         # Fill in required fields
         self.teacher.find(
@@ -2283,14 +2174,10 @@ class TestQuestionWork(unittest.TestCase):
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.teacher.login()
-        self.teacher.sleep(2)
-        self.teacher.driver.get("https://exercises-qa.openstax.org/")
-        self.teacher.sleep(2)
-        self.teacher.find(By.PARTIAL_LINK_TEXT, "SIGN IN").click()
-        self.teacher.sleep(2)
-        self.teacher.find(By.PARTIAL_LINK_TEXT, "WRITE A NEW EXERCISE").click()
-        self.teacher.sleep(5)
+        self.teacher.login(url="https://exercises-qa.openstax.org/")
+        self.teacher.find(
+            By.XPATH, '//span[text()="WRITE A NEW EXERCISE"]').click()
+        self.teacher.page.wait_for_page_load()
 
         # Fill in required fields
         self.teacher.find(
@@ -2384,14 +2271,10 @@ class TestQuestionWork(unittest.TestCase):
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.teacher.login()
-        self.teacher.sleep(2)
-        self.teacher.driver.get("https://exercises-qa.openstax.org/")
-        self.teacher.sleep(2)
-        self.teacher.find(By.PARTIAL_LINK_TEXT, "SIGN IN").click()
-        self.teacher.sleep(2)
-        self.teacher.driver.get("https://exercises-qa.openstax.org/search")
-        self.teacher.sleep(5)
+        self.teacher.login(url="https://exercises-qa.openstax.org/")
+        self.teacher.find(
+            By.XPATH, '//span[text()="WRITE A NEW EXERCISE"]').click()
+        self.teacher.page.wait_for_page_load()
 
         # Search for a vocabulary exercise
         self.teacher.sleep(3)
@@ -2771,14 +2654,10 @@ class TestQuestionWork(unittest.TestCase):
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.content.login()
-        self.content.sleep(2)
-        self.content.driver.get("https://exercises-qa.openstax.org/")
-        self.content.sleep(2)
-        self.content.find(By.PARTIAL_LINK_TEXT, "SIGN IN").click()
-        self.content.sleep(2)
-        self.content.find(By.PARTIAL_LINK_TEXT, "WRITE A NEW EXERCISE").click()
-        self.content.sleep(5)
+        self.content.login(url="https://exercises-qa.openstax.org/")
+        self.content.find(
+            By.XPATH, '//span[text()="WRITE A NEW EXERCISE"]').click()
+        self.content.page.wait_for_page_load()
 
         # Select Multiple Choice radio if not already selected
         if not self.content.find(
@@ -2876,14 +2755,10 @@ class TestQuestionWork(unittest.TestCase):
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.teacher.login()
-        self.teacher.sleep(2)
-        self.teacher.driver.get("https://exercises-qa.openstax.org/")
-        self.teacher.sleep(2)
-        self.teacher.find(By.PARTIAL_LINK_TEXT, "SIGN IN").click()
-        self.teacher.sleep(2)
-        self.teacher.find(By.PARTIAL_LINK_TEXT, "WRITE A NEW EXERCISE").click()
-        self.teacher.sleep(5)
+        self.teacher.login(url="https://exercises-qa.openstax.org/")
+        self.teacher.find(
+            By.XPATH, '//span[text()="WRITE A NEW EXERCISE"]').click()
+        self.teacher.page.wait_for_page_load()
 
         # Select Multiple Choice radio if not already selected
         if not self.teacher.find(
@@ -2982,14 +2857,10 @@ class TestQuestionWork(unittest.TestCase):
         self.ps.test_updates['passed'] = False
 
         # Test steps and verification assertions
-        self.content.login()
-        self.content.sleep(2)
-        self.content.driver.get("https://exercises-qa.openstax.org/")
-        self.content.sleep(2)
-        self.content.find(By.PARTIAL_LINK_TEXT, "SIGN IN").click()
-        self.content.sleep(2)
-        self.content.find(By.PARTIAL_LINK_TEXT, "WRITE A NEW EXERCISE").click()
-        self.content.sleep(5)
+        self.content.login(url="https://exercises-qa.openstax.org/")
+        self.content.find(
+            By.XPATH, '//span[text()="WRITE A NEW EXERCISE"]').click()
+        self.content.page.wait_for_page_load()
 
         # Select Multiple Choice radio if not already selected
         """
