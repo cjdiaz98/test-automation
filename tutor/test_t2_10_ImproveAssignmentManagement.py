@@ -28,20 +28,23 @@ basic_test_env = json.dumps([{
     'screenResolution': "1024x768",
 }])
 BROWSERS = json.loads(os.getenv('BROWSERS', basic_test_env))
-LOCAL_RUN = os.getenv('LOCALRUN', 'false').lower() == 'true'
+LOCAL_RUN = os.getenv('LOCALRUN', 'true').lower() == 'true'
 TESTS = os.getenv(
     'CASELIST',
     str([
-        14676, 14677, 14678, 14800, 14680,
-        14681, 14801, 14802, 14803, 14804,
-        14805, 14685, 14686, 14687, 14688,
-        14689
+        14687
     ])
 
     # these are not implemented features - 14682, 14685, 14689
     # error returning to dashboard - 14802
     # issues with the add hw helper - 14687
 )
+"""
+14676, 14677, 14678, 14800, 14680,
+        14681, 14801, 14802, 14803, 14804,
+        14805, 14685, 14686, 14687, 14688,
+        14689
+"""
 
 
 @PastaDecorator.on_platforms(BROWSERS)
@@ -1245,10 +1248,9 @@ class TestImproveAssignmentManagement(unittest.TestCase):
         self.ps.test_updates['passed'] = False
 
         # create a homework
-        raise NotImplementedError(inspect.currentframe().f_code.co_name)
 
         self.teacher.login()
-        self.teacher.select_course(appearance='college_physics')
+        self.teacher.select_course(appearance='ap_biology')
         assignment_name = "homework-017"
         today = datetime.date.today()
         begin = (today + datetime.timedelta(days=0)).strftime('%m/%d/%Y')
@@ -1259,57 +1261,109 @@ class TestImproveAssignmentManagement(unittest.TestCase):
                                         'description': 'description',
                                         'periods': {'all': (begin, end)},
                                         'status': 'publish',
-                                        'problems': {'1.1': (1, 2), },
-                                        'feedback': 'non-immeditae',
+                                        'problems': {'1.1': (1, 2), '1.2': (1, 2)},
+                                        'feedback': 'non-immediate',
                                     })
+        self.teacher.sleep(10)
         self.teacher.logout()
         # login as student to work the homework
         self.student.login()
-        self.student.select_course(appearance='college_physics')
-        self.student.find(
-            By.XPATH, '//span[contains(text(), "' + assignment_name + '")]'
+        self.student.select_course(appearance='ap_biology')
+        self.student.sleep(5)
+        self.student.driver.execute_script(
+            "window.scrollTo(0, document.body.scrollHeight);")
+        self.student.driver.find_element(
+            By.XPATH,
+            '//div[text()="%s"]' % assignment_name
         ).click()
         # work problems untill a free response question is found
         sections = self.student.find_all(
             By.XPATH, '//span[contains(@class,"openstax-breadcrumbs-step")]'
         )
-        for i in range(len(sections)):
-            try:
-                # if the question is two part must answer free response first
-                element = self.student.find(
-                    By.TAG_NAME, 'textarea')
-                answer_text = "answer"
-                for i in answer_text:
-                    element.send_keys(i)
+        found = False
+        while(1):
+            while ('paging-control next' in self.student.driver.page_source and
+                    'Concept Coach' not in self.student.driver.page_source and
+                    'exercise-multiple-choice'
+                    not in self.student.driver.page_source and
+                    'textarea' not in self.student.driver.page_source):
+                self.student.find(
+                    By.XPATH,
+                    "//a[@class='paging-control next']"
+                ).click()
+
+            # multiple choice case
+            if('exercise-multiple-choice' in self.student.driver.page_source):
+
+                answers = self.student.driver.find_elements(
+                    By.CLASS_NAME, 'answer-letter')
+                if (len(self.student.driver.find_elements_by_xpath(
+                    "//span[@class='text-info']")
+                ) > 0):
+                    self.student.driver.find_elements_by_xpath(
+                        "//span[@class='text-info']")[0].click()
+                    self.student.find(
+                        By.XPATH, "//div[@id='instructions-help']")
+                    found = True
+                self.student.sleep(0.8)
+                rand = randint(0, len(answers) - 1)
+                answer = chr(ord('a') + rand)
+                Assignment.scroll_to(self.student.driver, answers[0])
+                if answer == 'a':
+                    self.student.driver.execute_script(
+                        'window.scrollBy(0, -160);')
+                elif answer == 'd':
+                    self.student.driver.execute_script(
+                        'window.scrollBy(0, 160);')
+                answers[rand].click()
+
                 self.student.wait.until(
                     expect.element_to_be_clickable(
-                        (By.XPATH, '//button/span[contains(text(),"Answer")]')
+                        (By.XPATH, '//button[contains(@class,"async-button")' +
+                            ' and contains(@class,"continue")]')
                     )
                 ).click()
-                actions = ActionChains(self.student.driver)
-                why = self.teacher.find(
-                    By.XPATH, '//span[@class="text-info"]')
-                actions.move_to_element(why)
-                actions.perform()
-                self.teacher.driver.find_element(
+                self.student.sleep(5)
+                page = self.student.driver.page_source
+                assert('question-feedback bottom' in page), \
+                    'Did not submit MC'
+
+                self.student.find(
                     By.XPATH,
-                    '//div[@class="popover-content"]' +
-                    '//b[contains(text(),' +
-                    '"Why do you ask me to answer twice?")]')
+                    "//button[@class='async-button continue btn btn-primary']"
+                ).click()
+
+            # free response case
+            elif('textarea' in self.student.driver.page_source):
+                self.student.find(
+                    By.TAG_NAME, 'textarea').send_keys(
+                    'An answer for this textarea')
+                self.student.sleep(2)
+                self.student.wait.until(
+                    expect.element_to_be_clickable(
+                        (By.XPATH, '//button[contains(@class,"async-button")' +
+                            ' and contains(@class,"continue")]')
+                    )
+                ).click()
+
+                self.student.wait.until(
+                    expect.visibility_of_element_located(
+                        (By.CLASS_NAME, 'exercise-multiple-choice')
+                    )
+                )
+
+                self.student.sleep(2)
+
+            # Reached Concept Coach card
+            if('Spaced Practice' in self.student.driver.page_source and
+                    'spaced-practice-intro'
+                    in self.student.driver.page_source):
+                self.student.sleep(5)
                 break
-            except NoSuchElementException:
-                # click on the next breadcrumb
-                if i == len(sections):
-                    print("no two part questions in the homework")
-                    raise Exception
-                sections_new = self.student.find_all(
-                    By.XPATH, '//div[@class="openstax-breadcrumbs-step"]')
-                sections_new[i + 1].click()
-        # click on the last problems to find a spaced practice
-        sections = self.student.find_all(
-            By.XPATH, '//div[@class="openstax-breadcrumbs-step"]'
-        )
-        sections[-2].click()
+
+            self.student.sleep(2)
+
+        assert(found)
 
         self.ps.test_updates['passed'] = True
 
